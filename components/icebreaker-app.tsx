@@ -174,8 +174,18 @@ function SenderMode() {
     try {
       const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
       const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      const nextProfile = savedProfile
-        ? ({ ...SAMPLE_PROFILE, ...JSON.parse(savedProfile) } as FullProfile)
+      const storedProfile = savedProfile
+        ? (JSON.parse(savedProfile) as Partial<FullProfile>)
+        : null;
+      const nextProfile = storedProfile
+        ? ({
+            ...SAMPLE_PROFILE,
+            ...storedProfile,
+            name:
+              storedProfile.name === "James"
+                ? "Stefano"
+                : (storedProfile.name ?? SAMPLE_PROFILE.name),
+          } as FullProfile)
         : SAMPLE_PROFILE;
       const nextSettings = savedSettings
         ? ({ ...settings, ...JSON.parse(savedSettings) } as ShareSettings)
@@ -184,6 +194,9 @@ function SenderMode() {
       // Browser storage is unavailable during the server render.
       // eslint-disable-next-line react-hooks/set-state-in-effect
       setProfile(nextProfile);
+      if (storedProfile?.name === "James") {
+        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+      }
       setSettings(nextSettings);
       const nextShared = createSharedProfile(nextProfile, nextSettings);
       setGenerated(nextShared);
