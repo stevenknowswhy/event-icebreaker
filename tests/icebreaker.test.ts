@@ -5,10 +5,12 @@ import {
   SAMPLE_PROFILE,
   createAiPrompt,
   createConnectionString,
+  createConversationStarters,
   createSharedProfile,
   decodePayload,
   encodePayload,
   extractEncodedPayload,
+  migrateStoredProfile,
   validateSharedProfile,
 } from "../lib/icebreaker.ts";
 
@@ -32,8 +34,13 @@ test("low openness serializes only the minimum conversation card", () => {
     includeSpark: true,
   });
 
-  assert.deepEqual(shared.x, ["Private Equity", "AI Agents"]);
-  assert.equal(shared.s, "How ESOPs could end the wealth gap");
+  assert.deepEqual(shared.x, ["AI Agents", "Disaster Preparedness"]);
+  assert.equal(
+    shared.s,
+    "How AI agents can strengthen disaster readiness without eroding public trust",
+  );
+  assert.equal("h" in shared, false);
+  assert.equal("q" in shared, false);
   assert.equal("sd" in shared, false);
   assert.equal("va" in shared, false);
   assert.equal("c" in shared, false);
@@ -58,6 +65,17 @@ test("high openness includes rich details but honors the Spark toggle", () => {
   assert.deepEqual(withSpark.p, SAMPLE_PROFILE.personality);
   assert.equal("s" in withoutSpark, false);
   assert.equal("sd" in withoutSpark, false);
+});
+
+test("medium openness shares what Stefano offers and is looking for", () => {
+  const shared = createSharedProfile(SAMPLE_PROFILE, {
+    openness: "medium",
+    intent: "networking",
+    includeSpark: true,
+  });
+
+  assert.equal(shared.h, SAMPLE_PROFILE.canHelp);
+  assert.equal(shared.q, SAMPLE_PROFILE.lookingFor);
 });
 
 test("validates supported payloads and rejects malformed profiles", () => {
@@ -102,7 +120,42 @@ test("creates an AI prompt that gives immediate value before onboarding", () => 
   const prompt = createAiPrompt(shared);
 
   assert.match(prompt, /three natural, specific conversation questions/i);
-  assert.match(prompt, /How ESOPs could end the wealth gap/);
+  assert.match(prompt, /strengthen disaster readiness/);
+  assert.match(prompt, /Technical collaborators/);
   assert.match(prompt, /After giving me the questions/i);
   assert.match(prompt, /five brief questions/i);
+});
+
+test("creates three useful questions locally without an AI call", () => {
+  const shared = createSharedProfile(SAMPLE_PROFILE, {
+    openness: "high",
+    intent: "networking",
+    includeSpark: true,
+  });
+  const starters = createConversationStarters(shared);
+
+  assert.equal(starters.length, 3);
+  assert.match(starters[0], /disaster readiness/i);
+  assert.match(starters.join(" "), /emergency planning/i);
+  assert.match(starters.join(" "), /AI Agents/i);
+});
+
+test("ships a real Stefano profile and migrates only the old placeholder", () => {
+  assert.equal(SAMPLE_PROFILE.name, "Stefano");
+  assert.match(SAMPLE_PROFILE.role, /emergency management/i);
+  assert.doesNotMatch(SAMPLE_PROFILE.role, /private equity/i);
+
+  const oldPlaceholder = {
+    ...SAMPLE_PROFILE,
+    role: "Private equity operator and AI builder",
+    spark: "How ESOPs could end the wealth gap",
+  };
+  assert.deepEqual(migrateStoredProfile(oldPlaceholder), SAMPLE_PROFILE);
+
+  const customProfile = {
+    ...SAMPLE_PROFILE,
+    name: "Mary",
+    spark: "A genuinely custom idea",
+  };
+  assert.deepEqual(migrateStoredProfile(customProfile), customProfile);
 });

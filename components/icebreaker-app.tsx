@@ -3,23 +3,28 @@
 /* eslint-disable @next/next/no-html-link-for-pages */
 
 import QRCodeModule from "react-qr-code";
-import { useEffect, useMemo, useState } from "react";
+import { useCallback, useEffect, useMemo, useState } from "react";
 
+import { downloadVisualCard } from "../lib/card-download";
 import {
   OPENNESS_LEVELS,
   SAMPLE_PROFILE,
   createAiPrompt,
   createConnectionString,
+  createConversationStarters,
   createSharedProfile,
   decodePayload,
   encodePayload,
   extractEncodedPayload,
+  migrateStoredProfile,
   type FullProfile,
   type Intent,
   type Openness,
   type ShareSettings,
   type SharedProfile,
 } from "../lib/icebreaker";
+import { DemoMode } from "./demo-mode";
+import { ProfileSetup } from "./profile-setup";
 
 const PROFILE_STORAGE_KEY = "event-icebreaker.profile.v1";
 const SETTINGS_STORAGE_KEY = "event-icebreaker.settings.v1";
@@ -29,18 +34,11 @@ const QRCode =
       default?: typeof QRCodeModule;
     }
   ).default ?? QRCodeModule;
-const PERSONALITY_LABELS = [
-  "Openness",
-  "Conscientiousness",
-  "Extraversion",
-  "Agreeableness",
-  "Neuroticism",
-];
 
 const OPENNESS_COPY: Record<Openness, string> = {
-  low: "Name, role, two interests, short Spark",
-  medium: "Adds more interests and communication style",
-  high: "Adds values, full Spark, personality, and fun fact",
+  low: "Name, role, two interests, and a short Spark",
+  medium: "Adds how you can help, what you seek, and communication style",
+  high: "Adds values, full Spark, personality, and your memorable detail",
   max: "Shares every field you explicitly added",
 };
 
@@ -51,20 +49,13 @@ const INTENT_LABELS: Record<Intent, string> = {
   general: "General",
 };
 
-function parseList(value: string): string[] {
-  return value
-    .split(",")
-    .map((item) => item.trim())
-    .filter(Boolean);
-}
-
 async function copyText(text: string): Promise<void> {
   if (navigator.clipboard && window.isSecureContext) {
     try {
       await navigator.clipboard.writeText(text);
       return;
     } catch {
-      // Older mobile browsers can expose Clipboard API without granting it.
+      // Some mobile browsers expose Clipboard API without granting it.
     }
   }
 
@@ -80,18 +71,16 @@ async function copyText(text: string): Promise<void> {
 }
 
 function VisualCard({ profile }: { profile: SharedProfile }) {
+  const openness = Object.keys(OPENNESS_LEVELS).find(
+    (key) => OPENNESS_LEVELS[key as Openness] === profile.o,
+  );
+
   return (
     <article className="visual-card" aria-label={`${profile.n}'s visual card`}>
       <div className="visual-card__topline">
         <span className="visual-card__mark">EI</span>
         <span>{INTENT_LABELS[profile.i]}</span>
-        <span className="visual-card__openness">
-          {Object.keys(OPENNESS_LEVELS).find(
-            (key) =>
-              OPENNESS_LEVELS[key as Openness] === profile.o,
-          )}{" "}
-          signal
-        </span>
+        <span className="visual-card__openness">{openness} signal</span>
       </div>
       <div className="visual-card__body">
         <p className="eyebrow">MEET</p>
@@ -110,6 +99,22 @@ function VisualCard({ profile }: { profile: SharedProfile }) {
                 {interest}
               </span>
             ))}
+          </div>
+        )}
+        {(profile.h || profile.q) && (
+          <div className="visual-card__signals">
+            {profile.h && (
+              <p>
+                <strong>Can help</strong>
+                <span>{profile.h}</span>
+              </p>
+            )}
+            {profile.q && (
+              <p>
+                <strong>Looking for</strong>
+                <span>{profile.q}</span>
+              </p>
+            )}
           </div>
         )}
       </div>
@@ -147,71 +152,157 @@ function CopyButton({
       className={`button button--${variant}`}
       type="button"
       onClick={handleCopy}
+      disabled={!value}
     >
       {copied ? "Copied ✓" : label}
     </button>
   );
 }
 
+function DownloadCardButton({ profile }: { profile: SharedProfile }) {
+  const [label, setLabel] = useState("Download card");
+
+  async function handleDownload() {
+    try {
+      await downloadVisualCard(profile);
+      setLabel("Downloaded ✓");
+      window.setTimeout(() => setLabel("Download card"), 1800);
+    } catch {
+      setLabel("Download unavailable");
+    }
+  }
+
+  return (
+    <button
+      className="button button--secondary"
+      type="button"
+      onClick={handleDownload}
+    >
+      {label}
+    </button>
+  );
+}
+
+function ShareControls({
+  settings,
+  onChange,
+  onGenerate,
+  canGenerate,
+}: {
+  settings: ShareSettings;
+  onChange: (settings: ShareSettings) => void;
+  onGenerate: () => void;
+  canGenerate: boolean;
+}) {
+  return (
+    <div className="share-studio__controls">
+      <div className="share-control">
+        <span className="share-control__label">Openness</span>
+        <div className="segmented-control">
+          {(Object.keys(OPENNESS_LEVELS) as Openness[]).map((level) => (
+            <button
+              className={settings.openness === level ? "is-active" : ""}
+              type="button"
+              key={level}
+              aria-pressed={settings.openness === level}
+              onClick={() => onChange({ ...settings, openness: level })}
+            >
+              {level}
+            </button>
+          ))}
+        </div>
+        <small>{OPENNESS_COPY[settings.openness]}</small>
+      </div>
+      <div className="share-control">
+        <span className="share-control__label">Intent</span>
+        <div className="choice-grid">
+          {(Object.keys(INTENT_LABELS) as Intent[]).map((intent) => (
+            <button
+              className={settings.intent === intent ? "is-active" : ""}
+              type="button"
+              key={intent}
+              aria-pressed={settings.intent === intent}
+              onClick={() => onChange({ ...settings, intent })}
+            >
+              {INTENT_LABELS[intent]}
+            </button>
+          ))}
+        </div>
+      </div>
+      <label className="toggle-row toggle-row--compact">
+        <span>
+          <strong>Include current Spark</strong>
+          <small>Your strongest conversation hook</small>
+        </span>
+        <input
+          type="checkbox"
+          checked={settings.includeSpark}
+          onChange={(event) =>
+            onChange({ ...settings, includeSpark: event.target.checked })
+          }
+        />
+      </label>
+      <button
+        className="button button--primary"
+        type="button"
+        onClick={onGenerate}
+        disabled={!canGenerate}
+      >
+        Refresh share QR ↗
+      </button>
+    </div>
+  );
+}
+
 function SenderMode() {
-  const [profile, setProfile] = useState<FullProfile>(SAMPLE_PROFILE);
-  const [settings, setSettings] = useState<ShareSettings>({
+  const defaultSettings: ShareSettings = {
     openness: "high",
     intent: "networking",
     includeSpark: true,
-  });
+  };
+  const [profile, setProfile] = useState<FullProfile>(SAMPLE_PROFILE);
+  const [settings, setSettings] = useState<ShareSettings>(defaultSettings);
   const [generated, setGenerated] = useState<SharedProfile>(() =>
-    createSharedProfile(SAMPLE_PROFILE, {
-      openness: "high",
-      intent: "networking",
-      includeSpark: true,
-    }),
+    createSharedProfile(SAMPLE_PROFILE, defaultSettings),
   );
   const [shareUrl, setShareUrl] = useState("");
-  const [saveState, setSaveState] = useState("Sample profile ready");
+  const [saveState, setSaveState] = useState("Stefano profile ready");
 
   useEffect(() => {
-    try {
-      const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
-      const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
-      const storedProfile = savedProfile
-        ? (JSON.parse(savedProfile) as Partial<FullProfile>)
-        : null;
-      const nextProfile = storedProfile
-        ? ({
-            ...SAMPLE_PROFILE,
-            ...storedProfile,
-            name:
-              storedProfile.name === "James"
-                ? "Stefano"
-                : (storedProfile.name ?? SAMPLE_PROFILE.name),
-          } as FullProfile)
-        : SAMPLE_PROFILE;
-      const nextSettings = savedSettings
-        ? ({ ...settings, ...JSON.parse(savedSettings) } as ShareSettings)
-        : settings;
+    const timer = window.setTimeout(() => {
+      try {
+        const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+        const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+        const nextProfile = savedProfile
+          ? migrateStoredProfile(JSON.parse(savedProfile))
+          : SAMPLE_PROFILE;
+        const nextSettings = savedSettings
+          ? ({
+              ...defaultSettings,
+              ...JSON.parse(savedSettings),
+            } as ShareSettings)
+          : defaultSettings;
+        const nextShared = createSharedProfile(nextProfile, nextSettings);
 
-      // Browser storage is unavailable during the server render.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setProfile(nextProfile);
-      if (storedProfile?.name === "James") {
-        localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+        setProfile(nextProfile);
+        setSettings(nextSettings);
+        setGenerated(nextShared);
+        setShareUrl(
+          `${window.location.origin}/receive#${encodePayload(nextShared)}`,
+        );
+        if (savedProfile) {
+          localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
+          setSaveState("Saved on this device");
+        }
+      } catch {
+        const nextShared = createSharedProfile(SAMPLE_PROFILE, defaultSettings);
+        setShareUrl(
+          `${window.location.origin}/receive#${encodePayload(nextShared)}`,
+        );
       }
-      setSettings(nextSettings);
-      const nextShared = createSharedProfile(nextProfile, nextSettings);
-      setGenerated(nextShared);
-      setShareUrl(
-        `${window.location.origin}/receive#${encodePayload(nextShared)}`,
-      );
-      setSaveState(savedProfile ? "Saved on this device" : "Sample profile ready");
-    } catch {
-      const nextShared = createSharedProfile(SAMPLE_PROFILE, settings);
-      setGenerated(nextShared);
-      setShareUrl(
-        `${window.location.origin}/receive#${encodePayload(nextShared)}`,
-      );
-    }
-    // Initial device hydration intentionally runs once.
+    }, 0);
+    return () => window.clearTimeout(timer);
+    // Device hydration intentionally runs once.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
 
@@ -238,15 +329,17 @@ function SenderMode() {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
   }
 
-  function generateShare() {
+  function generateShare(scroll = true) {
     const nextShared = createSharedProfile(profile, settings);
     setGenerated(nextShared);
     setShareUrl(
       `${window.location.origin}/receive#${encodePayload(nextShared)}`,
     );
-    document
-      .getElementById("share-output")
-      ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    if (scroll) {
+      document
+        .getElementById("share-studio")
+        ?.scrollIntoView({ behavior: "smooth", block: "start" });
+    }
   }
 
   async function shareProfile() {
@@ -259,260 +352,51 @@ function SenderMode() {
           url: shareUrl,
         });
       } catch {
-        // Closing the native share sheet is not an error state.
+        // Closing the native share sheet is expected.
       }
-      return;
+    } else {
+      await copyText(shareUrl);
     }
-    await copyText(shareUrl);
   }
 
   return (
     <main>
       <SiteHeader mode="sender" />
 
-      <section className="hero shell">
-        <div className="hero__copy">
+      <section className="sender-intro shell">
+        <div>
           <p className="eyebrow">YOUR SIGNAL, NOT YOUR RÉSUMÉ</p>
           <h1>Skip the small talk.</h1>
-          <p className="hero__lede">
-            Share just enough context for someone to know what would be
-            interesting to discuss with you.
+          <p>
+            Share enough context for someone to know what would be interesting
+            to discuss with you.
           </p>
-          <div className="trust-row" aria-label="Privacy features">
-            <span>◆ No account</span>
-            <span>◆ Stays on device</span>
-            <span>◆ You choose what travels</span>
-          </div>
         </div>
-        <div className="hero__card">
-          <VisualCard profile={createSharedProfile(profile, settings)} />
-          <p className="microcopy">
-            Live preview · only selected openness fields appear
-          </p>
+        <div className="trust-row" aria-label="Privacy features">
+          <span>◆ No account</span>
+          <span>◆ Stays on device</span>
+          <span>◆ You choose what travels</span>
         </div>
       </section>
 
-      <section className="builder-section">
-        <div className="shell builder-grid">
-          <div className="panel profile-panel">
-            <div className="panel-heading">
-              <div>
-                <p className="step-label">01 · BUILD YOUR CARD</p>
-                <h2>What should people know?</h2>
-              </div>
-              <span className="save-status">{saveState}</span>
-            </div>
-
-            <div className="form-grid">
-              <label>
-                <span>Name</span>
-                <input
-                  value={profile.name}
-                  maxLength={80}
-                  onChange={(event) =>
-                    updateProfile("name", event.target.value)
-                  }
-                />
-              </label>
-              <label>
-                <span>Role or tagline</span>
-                <input
-                  value={profile.role}
-                  maxLength={120}
-                  onChange={(event) =>
-                    updateProfile("role", event.target.value)
-                  }
-                />
-              </label>
-              <label className="field-wide">
-                <span>Interests</span>
-                <input
-                  value={profile.interests.join(", ")}
-                  maxLength={420}
-                  onChange={(event) =>
-                    updateProfile("interests", parseList(event.target.value))
-                  }
-                />
-                <small>Separate interests with commas.</small>
-              </label>
-              <label className="field-wide">
-                <span>Current Spark</span>
-                <input
-                  value={profile.spark}
-                  maxLength={160}
-                  onChange={(event) =>
-                    updateProfile("spark", event.target.value)
-                  }
-                />
-              </label>
-              <label className="field-wide">
-                <span>Spark details</span>
-                <textarea
-                  value={profile.sparkDetails}
-                  maxLength={360}
-                  rows={3}
-                  onChange={(event) =>
-                    updateProfile("sparkDetails", event.target.value)
-                  }
-                />
-              </label>
-              <label>
-                <span>Values</span>
-                <input
-                  value={profile.values.join(", ")}
-                  maxLength={260}
-                  onChange={(event) =>
-                    updateProfile("values", parseList(event.target.value))
-                  }
-                />
-              </label>
-              <label>
-                <span>Communication style</span>
-                <input
-                  value={profile.communicationStyle}
-                  maxLength={160}
-                  onChange={(event) =>
-                    updateProfile("communicationStyle", event.target.value)
-                  }
-                />
-              </label>
-              <label className="field-wide">
-                <span>Fun fact</span>
-                <input
-                  value={profile.funFact}
-                  maxLength={220}
-                  onChange={(event) =>
-                    updateProfile("funFact", event.target.value)
-                  }
-                />
-              </label>
-            </div>
-
-            <details className="personality-details">
-              <summary>Personality signal (OCEAN)</summary>
-              <p>
-                Optional context, shared only at High or Max openness.
-              </p>
-              <div className="slider-list">
-                {PERSONALITY_LABELS.map((label, index) => (
-                  <label className="slider-row" key={label}>
-                    <span>{label}</span>
-                    <input
-                      type="range"
-                      min="0"
-                      max="1"
-                      step="0.05"
-                      value={profile.personality[index]}
-                      onChange={(event) => {
-                        const next = [...profile.personality] as FullProfile["personality"];
-                        next[index] = Number(event.target.value);
-                        updateProfile("personality", next);
-                      }}
-                    />
-                    <output>{profile.personality[index].toFixed(2)}</output>
-                  </label>
-                ))}
-              </div>
-            </details>
-          </div>
-
-          <aside className="panel share-controls">
-            <p className="step-label">02 · SET THE SIGNAL</p>
-            <h2>What travels today?</h2>
-
-            <fieldset>
-              <legend>Openness</legend>
-              <div className="segmented-control">
-                {(Object.keys(OPENNESS_LEVELS) as Openness[]).map((level) => (
-                  <button
-                    className={settings.openness === level ? "is-active" : ""}
-                    type="button"
-                    key={level}
-                    aria-pressed={settings.openness === level}
-                    onClick={() =>
-                      updateSettings({ ...settings, openness: level })
-                    }
-                  >
-                    {level}
-                  </button>
-                ))}
-              </div>
-              <p className="control-help">
-                {OPENNESS_COPY[settings.openness]}
-              </p>
-            </fieldset>
-
-            <fieldset>
-              <legend>Intent</legend>
-              <div className="choice-grid">
-                {(Object.keys(INTENT_LABELS) as Intent[]).map((intent) => (
-                  <button
-                    className={settings.intent === intent ? "is-active" : ""}
-                    type="button"
-                    key={intent}
-                    aria-pressed={settings.intent === intent}
-                    onClick={() =>
-                      updateSettings({ ...settings, intent })
-                    }
-                  >
-                    {INTENT_LABELS[intent]}
-                  </button>
-                ))}
-              </div>
-            </fieldset>
-
-            <label className="toggle-row">
-              <span>
-                <strong>Include current Spark</strong>
-                <small>The strongest conversation hook.</small>
-              </span>
-              <input
-                type="checkbox"
-                checked={settings.includeSpark}
-                onChange={(event) =>
-                  updateSettings({
-                    ...settings,
-                    includeSpark: event.target.checked,
-                  })
-                }
-              />
-            </label>
-
-            <button
-              className="button button--primary button--generate"
-              type="button"
-              onClick={generateShare}
-              disabled={!profile.name.trim()}
-            >
-              Generate my QR code <span>↗</span>
-            </button>
-            <p className="privacy-note">
-              Your complete profile stays in this browser. The QR includes only
-              the filtered card above.
-            </p>
-          </aside>
-        </div>
-      </section>
-
-      <section className="output-section" id="share-output">
+      <section className="share-studio-section" id="share-studio">
         <div className="shell">
-          <div className="section-heading">
+          <div className="section-heading section-heading--compact">
             <div>
-              <p className="step-label">03 · SHARE THE SIGNAL</p>
-              <h2>One scan. Something real to talk about.</h2>
+              <p className="step-label">READY TO SHARE</p>
+              <h2>Your QR and card, front and center.</h2>
             </div>
             <span className="payload-meter">
               {shareUrl.length} characters · QR-safe
             </span>
           </div>
-
-          <div className="output-grid">
-            <div className="qr-panel">
+          <div className="share-studio">
+            <div className="share-studio__qr">
               <div className="qr-frame">
                 {shareUrl ? (
                   <QRCode
                     value={shareUrl}
-                    size={248}
+                    size={256}
                     level="M"
                     bgColor="#ffffff"
                     fgColor="#101114"
@@ -524,16 +408,14 @@ function SenderMode() {
               </div>
               <div>
                 <h3>Scan with any phone camera</h3>
-                <p>
-                  No app needed. The profile is decoded privately in the
-                  receiver’s browser.
-                </p>
+                <p>No app or login. The profile opens as a normal web link.</p>
               </div>
               <div className="button-row">
                 <button
                   className="button button--primary"
                   type="button"
                   onClick={shareProfile}
+                  disabled={!shareUrl}
                 >
                   Share profile
                 </button>
@@ -541,24 +423,42 @@ function SenderMode() {
               </div>
             </div>
 
-            <div className="output-card-panel">
+            <div className="share-studio__card">
               <VisualCard profile={generated} />
-              <div className="output-callout">
-                <span className="callout-icon">↳</span>
-                <p>
-                  <strong>The card is the product.</strong>
-                  <br />
-                  AI is optional; this alone should start the conversation.
-                </p>
-              </div>
+              <DownloadCardButton profile={generated} />
+              <p className="microcopy">
+                Save the card as an offline backup or lock-screen image.
+              </p>
             </div>
-          </div>
 
-          <div className="fallback-grid">
+            <ShareControls
+              settings={settings}
+              onChange={updateSettings}
+              onGenerate={() => generateShare(false)}
+              canGenerate={Boolean(profile.name.trim())}
+            />
+          </div>
+        </div>
+      </section>
+
+      <section className="builder-section">
+        <div className="shell compact-builder">
+          <ProfileSetup
+            profile={profile}
+            onChange={updateProfile}
+            onFinish={() => generateShare(true)}
+            saveState={saveState}
+          />
+
+          <div className="fallback-grid fallback-grid--compact">
             <details>
               <summary>Shareable URL</summary>
               <code>{shareUrl}</code>
-              <CopyButton label="Copy share URL" value={shareUrl} variant="quiet" />
+              <CopyButton
+                label="Copy share URL"
+                value={shareUrl}
+                variant="quiet"
+              />
             </details>
             <details>
               <summary>Connection String fallback</summary>
@@ -585,19 +485,20 @@ function ReceiverMode() {
   const [sourcePayload, setSourcePayload] = useState("");
 
   useEffect(() => {
-    try {
-      const encoded = extractEncodedPayload(window.location.href);
-      // The URL fragment exists only in the receiver's browser.
-      // eslint-disable-next-line react-hooks/set-state-in-effect
-      setSourcePayload(encoded);
-      setProfile(decodePayload(encoded));
-    } catch (caught) {
-      setError(
-        caught instanceof Error
-          ? caught.message
-          : "This Icebreaker link could not be opened.",
-      );
-    }
+    const timer = window.setTimeout(() => {
+      try {
+        const encoded = extractEncodedPayload(window.location.href);
+        setSourcePayload(encoded);
+        setProfile(decodePayload(encoded));
+      } catch (caught) {
+        setError(
+          caught instanceof Error
+            ? caught.message
+            : "This Icebreaker link could not be opened.",
+        );
+      }
+    }, 0);
+    return () => window.clearTimeout(timer);
   }, []);
 
   function decodeManual() {
@@ -637,7 +538,9 @@ function ReceiverMode() {
               rows={7}
               value={manualInput}
               onChange={(event) => setManualInput(event.target.value)}
-              placeholder={`${"-----BEGIN EVENT ICEBREAKER PROFILE-----"}\n…\n${"-----END EVENT ICEBREAKER PROFILE-----"}`}
+              placeholder={
+                "-----BEGIN EVENT ICEBREAKER PROFILE-----\n…\n-----END EVENT ICEBREAKER PROFILE-----"
+              }
             />
           </label>
           <button
@@ -658,6 +561,7 @@ function ReceiverMode() {
   }
 
   const prompt = createAiPrompt(profile);
+  const starters = createConversationStarters(profile);
   const connectionString = createConnectionString(sourcePayload);
 
   return (
@@ -671,14 +575,33 @@ function ReceiverMode() {
             Read the card. Pick a thread. Ask something only you could ask
             because you saw this.
           </p>
+          <DownloadCardButton profile={profile} />
         </div>
-
         <div className="receiver-card-wrap">
           <VisualCard profile={profile} />
           <div className="decoded-locally">
             <span>✓</span>
             Decoded on this device · nothing was uploaded
           </div>
+        </div>
+      </section>
+
+      <section className="starter-section">
+        <div className="shell">
+          <div className="section-heading section-heading--compact">
+            <div>
+              <p className="step-label">START HERE · NO AI NEEDED</p>
+              <h2>Three questions worth asking.</h2>
+            </div>
+          </div>
+          <ol className="starter-grid">
+            {starters.map((starter, index) => (
+              <li key={starter}>
+                <span>0{index + 1}</span>
+                <p>{starter}</p>
+              </li>
+            ))}
+          </ol>
         </div>
       </section>
 
@@ -709,7 +632,7 @@ function ReceiverMode() {
             <h2>Make your own signal.</h2>
             <p>
               Build a private card on this device, choose what to reveal, and
-              get your own QR in under two minutes.
+              get your own QR in about two minutes.
             </p>
             <a className="button button--secondary" href="/">
               Build my profile
@@ -755,21 +678,36 @@ function ReceiverMode() {
 }
 
 function SiteHeader({ mode }: { mode: "sender" | "receiver" }) {
+  const [demoOpen, setDemoOpen] = useState(false);
+  const closeDemo = useCallback(() => setDemoOpen(false), []);
+
   return (
-    <header className="site-header">
-      <div className="shell site-header__inner">
-        <a className="brand" href="/" aria-label="Event Icebreaker home">
-          <span className="brand__mark">⚡</span>
-          <span>
-            Event <strong>Icebreaker</strong>
-          </span>
-        </a>
-        <div className="mode-chip">
-          <span className="mode-chip__dot" />
-          {mode === "sender" ? "Sender mode" : "Receiver mode"}
+    <>
+      <header className="site-header">
+        <div className="shell site-header__inner">
+          <a className="brand" href="/" aria-label="Event Icebreaker home">
+            <span className="brand__mark">⚡</span>
+            <span>
+              Event <strong>Icebreaker</strong>
+            </span>
+          </a>
+          <div className="site-header__actions">
+            <button
+              className="demo-button"
+              type="button"
+              onClick={() => setDemoOpen(true)}
+            >
+              ▶ 60-sec demo
+            </button>
+            <div className="mode-chip">
+              <span className="mode-chip__dot" />
+              {mode === "sender" ? "Sender" : "Receiver"}
+            </div>
+          </div>
         </div>
-      </div>
-    </header>
+      </header>
+      {demoOpen && <DemoMode open onClose={closeDemo} />}
+    </>
   );
 }
 

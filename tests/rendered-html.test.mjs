@@ -30,11 +30,16 @@ test("server-renders the Event Icebreaker sender experience", async () => {
   const html = await response.text();
   assert.match(html, /<title>Event Icebreaker — Skip the small talk<\/title>/i);
   assert.match(html, /Skip the small talk\./);
-  assert.match(html, /Generate my QR code/);
+  assert.match(html, /Refresh share QR/);
+  assert.match(html, /YOUR FIVE-QUESTION SETUP/);
+  assert.match(html, /60-sec demo/);
+  assert.match(html, /Download card/);
   assert.match(html, /Connection String fallback/);
   assert.match(html, /Stefano/);
   assert.doesNotMatch(html, /\bJames\b/);
-  assert.match(html, /How ESOPs could end the wealth gap/);
+  assert.match(html, /strengthen disaster readiness/);
+  assert.match(html, /Emergency management strategist/);
+  assert.doesNotMatch(html, /Private equity operator/);
   assert.match(html, /og:image/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
 });
@@ -44,7 +49,7 @@ test("server-renders receiver recovery without requiring profile data", async ()
   assert.equal(response.status, 200);
 
   const html = await response.text();
-  assert.match(html, /Receiver mode/);
+  assert.match(html, />Receiver</);
   assert.match(html, /Let’s recover the signal\./);
   assert.match(html, /Icebreaker link or Connection String/);
   assert.match(html, /Build my own profile instead/);

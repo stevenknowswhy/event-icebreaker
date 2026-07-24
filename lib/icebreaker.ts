@@ -18,6 +18,8 @@ export type FullProfile = {
   interests: string[];
   spark: string;
   sparkDetails: string;
+  canHelp: string;
+  lookingFor: string;
   values: string[];
   communicationStyle: string;
   funFact: string;
@@ -39,6 +41,8 @@ export type SharedProfile = {
   x: string[];
   s?: string;
   sd?: string;
+  h?: string;
+  q?: string;
   va?: string[];
   c?: string;
   f?: string;
@@ -47,15 +51,26 @@ export type SharedProfile = {
 
 export const SAMPLE_PROFILE: FullProfile = {
   name: "Stefano",
-  role: "Private equity operator and AI builder",
-  interests: ["Private Equity", "AI Agents", "Urban Design"],
-  spark: "How ESOPs could end the wealth gap",
+  role: "Emergency management strategist and AI resilience builder",
+  interests: [
+    "AI Agents",
+    "Disaster Preparedness",
+    "Civic Technology",
+    "Public Safety",
+    "Urban Resilience",
+  ],
+  spark:
+    "How AI agents can strengthen disaster readiness without eroding public trust",
   sparkDetails:
-    "How ESOPs could end the wealth gap if we made them the default corporate structure.",
-  values: ["Ownership", "Transparency", "Curiosity"],
-  communicationStyle: "Direct and concise",
-  funFact: "Visited 40 countries but never learned to swim",
-  personality: [0.85, 0.72, 0.6, 0.9, 0.35],
+    "I’m exploring how agentic systems can support emergency planning, public information, and resilient communities while keeping humans accountable.",
+  canHelp:
+    "Emergency planning, public-sector workflows, resilience strategy, and turning high-stakes problems into practical products",
+  lookingFor:
+    "Technical collaborators, AI platform expertise, and partners building trustworthy civic technology",
+  values: ["Preparedness", "Public Service", "Clarity"],
+  communicationStyle: "Direct, practical, and systems-minded",
+  funFact: "Ask me what most cities misunderstand about disaster preparedness.",
+  personality: [0.8, 0.8, 0.55, 0.72, 0.3],
 };
 
 const TEXT_LIMITS = {
@@ -64,6 +79,8 @@ const TEXT_LIMITS = {
   interest: 50,
   spark: 160,
   sparkDetails: 360,
+  canHelp: 280,
+  lookingFor: 280,
   value: 40,
   communication: 160,
   funFact: 220,
@@ -107,6 +124,12 @@ export function createSharedProfile(
   }
 
   if (openness >= 2) {
+    const canHelp = cleanText(profile.canHelp, TEXT_LIMITS.canHelp);
+    if (canHelp) shared.h = canHelp;
+
+    const lookingFor = cleanText(profile.lookingFor, TEXT_LIMITS.lookingFor);
+    if (lookingFor) shared.q = lookingFor;
+
     const communication = cleanText(
       profile.communicationStyle,
       TEXT_LIMITS.communication,
@@ -258,6 +281,13 @@ export function validateSharedProfile(value: unknown): SharedProfile {
     "Spark details",
     TEXT_LIMITS.sparkDetails,
   );
+  const canHelp = readText(value, "h", "ways they can help", TEXT_LIMITS.canHelp);
+  const lookingFor = readText(
+    value,
+    "q",
+    "what they are looking for",
+    TEXT_LIMITS.lookingFor,
+  );
   const values = readTextList(
     value,
     "va",
@@ -276,6 +306,8 @@ export function validateSharedProfile(value: unknown): SharedProfile {
   if (role !== undefined) profile.r = role;
   if (spark !== undefined) profile.s = spark;
   if (sparkDetails !== undefined) profile.sd = sparkDetails;
+  if (canHelp !== undefined) profile.h = canHelp;
+  if (lookingFor !== undefined) profile.q = lookingFor;
   if (values !== undefined) profile.va = values;
   if (communication !== undefined) profile.c = communication;
   if (funFact !== undefined) profile.f = funFact;
@@ -347,6 +379,8 @@ export function createAiPrompt(profile: SharedProfile): string {
   if (profile.x.length) lines.push(`Interests: ${profile.x.join(", ")}`);
   if (profile.s) lines.push(`Spark: ${profile.s}`);
   if (profile.sd) lines.push(`Spark details: ${profile.sd}`);
+  if (profile.h) lines.push(`Can help with: ${profile.h}`);
+  if (profile.q) lines.push(`Looking for: ${profile.q}`);
   if (profile.va?.length) lines.push(`Values: ${profile.va.join(", ")}`);
   if (profile.c) lines.push(`Communication: ${profile.c}`);
   if (profile.f) lines.push(`Fun fact: ${profile.f}`);
@@ -366,4 +400,72 @@ export function createAiPrompt(profile: SharedProfile): string {
   );
 
   return lines.join("\n");
+}
+
+export function createConversationStarters(
+  profile: SharedProfile,
+): [string, string, string] {
+  const sparkQuestion = profile.s
+    ? `“${profile.s}” is a strong premise—what first pulled you into it?`
+    : `What part of ${profile.x[0] ?? "your work"} has your attention right now?`;
+  const helpQuestion = profile.h
+    ? `You can help with ${profile.h}—where have you seen that make the biggest difference?`
+    : profile.q
+      ? `You’re looking for ${profile.q}—what would a great connection here unlock?`
+      : `What kind of problem do you most enjoy helping people solve?`;
+  const curiosityQuestion =
+    profile.x.length >= 2
+      ? `Between ${profile.x[0]} and ${profile.x[1]}, which rabbit hole would you happily go down tonight?`
+      : profile.f
+        ? `${profile.f} What’s the story behind that?`
+        : `What conversation would make this event worthwhile for you?`;
+
+  return [sparkQuestion, helpQuestion, curiosityQuestion];
+}
+
+export function migrateStoredProfile(value: unknown): FullProfile {
+  if (!isRecord(value)) return SAMPLE_PROFILE;
+
+  const hasPlaceholderFingerprint =
+    (value.name === "James" || value.name === "Stefano") &&
+    value.role === "Private equity operator and AI builder" &&
+    value.spark === "How ESOPs could end the wealth gap";
+  if (hasPlaceholderFingerprint) return SAMPLE_PROFILE;
+
+  const personality =
+    Array.isArray(value.personality) &&
+    value.personality.length === 5 &&
+    value.personality.every(
+      (score) => typeof score === "number" && Number.isFinite(score),
+    )
+      ? (value.personality.map((score) =>
+          Math.min(1, Math.max(0, score as number)),
+        ) as FullProfile["personality"])
+      : SAMPLE_PROFILE.personality;
+
+  return {
+    name: typeof value.name === "string" ? value.name : SAMPLE_PROFILE.name,
+    role: typeof value.role === "string" ? value.role : "",
+    interests: Array.isArray(value.interests)
+      ? value.interests.filter(
+          (interest): interest is string => typeof interest === "string",
+        )
+      : [],
+    spark: typeof value.spark === "string" ? value.spark : "",
+    sparkDetails:
+      typeof value.sparkDetails === "string" ? value.sparkDetails : "",
+    canHelp: typeof value.canHelp === "string" ? value.canHelp : "",
+    lookingFor: typeof value.lookingFor === "string" ? value.lookingFor : "",
+    values: Array.isArray(value.values)
+      ? value.values.filter(
+          (item): item is string => typeof item === "string",
+        )
+      : [],
+    communicationStyle:
+      typeof value.communicationStyle === "string"
+        ? value.communicationStyle
+        : "",
+    funFact: typeof value.funFact === "string" ? value.funFact : "",
+    personality,
+  };
 }

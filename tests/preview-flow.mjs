@@ -31,11 +31,15 @@ try {
     "Skip the small talk.",
   );
   assert.equal(await sender.locator(".qr-frame svg").count(), 1);
+  assert.match(
+    (await sender.locator(".visual-card__role").first().textContent()) ?? "",
+    /Emergency management strategist/i,
+  );
 
   await sender
-    .getByRole("button", { name: /Generate my QR code/i })
+    .getByRole("button", { name: /Refresh share QR/i })
     .click();
-  await sender.locator("#share-output").scrollIntoViewIfNeeded();
+  await sender.locator(".fallback-grid").scrollIntoViewIfNeeded();
   await sender.locator(".fallback-grid details").first().locator("summary").click();
   await sender
     .locator(".fallback-grid details")
@@ -55,7 +59,7 @@ try {
     .textContent();
 
   assert.ok(shareUrl?.startsWith(`${origin}/receive#`));
-  assert.ok(shareUrl.length < 1200);
+  assert.ok(shareUrl.length < 1800);
   assert.match(
     connectionString ?? "",
     /BEGIN EVENT ICEBREAKER PROFILE[\s\S]+END EVENT ICEBREAKER PROFILE/,
@@ -66,6 +70,30 @@ try {
   await sender
     .getByRole("button", { name: "Copied ✓" })
     .waitFor({ timeout: 2_000 });
+
+  const downloadPromise = sender.waitForEvent("download");
+  await sender.getByRole("button", { name: "Download card" }).click();
+  const download = await downloadPromise;
+  assert.equal(download.suggestedFilename(), "stefano-icebreaker-card.png");
+
+  await sender.getByRole("button", { name: /60-sec demo/i }).click();
+  assert.equal(
+    await sender.getByRole("dialog").getByRole("heading").textContent(),
+    "A private profile, already on his phone.",
+  );
+  await sender.getByRole("button", { name: "Close demo" }).click();
+
+  await mkdir("artifacts", { recursive: true });
+  await sender.screenshot({
+    path: "artifacts/sender-mobile.png",
+    fullPage: true,
+  });
+
+  await sender.getByRole("button", { name: "Next question" }).click();
+  assert.equal(
+    await sender.locator(".setup-question h3").textContent(),
+    "What has your attention?",
+  );
 
   const receiver = await context.newPage();
   watchPage(receiver);
@@ -78,11 +106,16 @@ try {
   );
   assert.match(
     (await receiver.locator(".visual-card blockquote").textContent()) ?? "",
-    /How ESOPs could end the wealth gap/,
+    /strengthen disaster readiness/,
   );
   assert.match(
     (await receiver.locator(".decoded-locally").textContent()) ?? "",
     /nothing was uploaded/i,
+  );
+  assert.equal(await receiver.locator(".starter-grid li").count(), 3);
+  assert.match(
+    (await receiver.locator(".starter-grid").textContent()) ?? "",
+    /emergency planning/i,
   );
 
   const copyPrompt = receiver.getByRole("button", { name: "Copy AI prompt" });
@@ -106,7 +139,6 @@ try {
     "Stefano",
   );
 
-  await mkdir("artifacts", { recursive: true });
   await receiver.screenshot({
     path: "artifacts/receiver-mobile.png",
     fullPage: true,
