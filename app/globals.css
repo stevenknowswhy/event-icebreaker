@@ -1170,7 +1170,7 @@ summary {
 .deep-mode-grid {
   display: grid;
   gap: 10px;
-  grid-template-columns: repeat(3, 1fr);
+  grid-template-columns: repeat(2, 1fr);
   margin-top: 22px;
 }
 
@@ -1989,6 +1989,98 @@ summary {
   text-transform: uppercase;
 }
 
+.share-path-section {
+  padding: 18px 0 72px;
+}
+
+.share-path-heading {
+  margin-bottom: 24px;
+  max-width: 720px;
+}
+
+.share-path-heading h2 {
+  font-size: clamp(34px, 5vw, 58px);
+  letter-spacing: -0.055em;
+  line-height: 1;
+  margin: 8px 0 14px;
+}
+
+.share-path-heading > p:not(.step-label) {
+  color: #55574f;
+  font-size: 16px;
+  line-height: 1.55;
+  margin: 0;
+}
+
+.share-path-grid {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+}
+
+.share-path-grid > button {
+  align-items: center;
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 20px;
+  color: var(--ink);
+  cursor: pointer;
+  display: grid;
+  gap: 18px;
+  grid-template-columns: auto 1fr auto;
+  min-height: 158px;
+  padding: 26px;
+  text-align: left;
+  transition:
+    border-color 160ms ease,
+    box-shadow 160ms ease,
+    transform 160ms ease;
+}
+
+.share-path-grid > button:hover,
+.share-path-grid > button.is-active {
+  border-color: #9baa00;
+  box-shadow: 0 12px 32px rgba(12, 13, 15, 0.1);
+  transform: translateY(-2px);
+}
+
+.share-path-number {
+  align-self: start;
+  color: #7a7c73;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+}
+
+.share-path-grid strong,
+.share-path-grid small {
+  display: block;
+}
+
+.share-path-grid strong {
+  font-size: clamp(22px, 3vw, 31px);
+  letter-spacing: -0.045em;
+  line-height: 1.05;
+}
+
+.share-path-grid small {
+  color: #62645d;
+  font-size: 12px;
+  line-height: 1.55;
+  margin-top: 10px;
+  max-width: 440px;
+}
+
+.share-path-arrow {
+  align-items: center;
+  background: var(--electric);
+  border-radius: 999px;
+  display: flex;
+  font-size: 20px;
+  height: 42px;
+  justify-content: center;
+  width: 42px;
+}
+
 .share-studio-section {
   background: #26292e;
   color: #fff;
@@ -2000,13 +2092,50 @@ summary {
   margin-bottom: 22px;
 }
 
+.share-config-card {
+  background: #17191d;
+  border: 1px solid rgba(255, 255, 255, 0.11);
+  border-radius: 22px;
+  padding: 24px;
+}
+
+.share-generate-row {
+  align-items: center;
+  background: rgba(223, 255, 0, 0.08);
+  border: 1px solid rgba(223, 255, 0, 0.24);
+  border-radius: 18px;
+  display: flex;
+  gap: 24px;
+  justify-content: space-between;
+  margin-top: 18px;
+  padding: 20px 22px;
+}
+
+.share-generate-row > div {
+  display: grid;
+  gap: 4px;
+}
+
+.share-generate-row strong {
+  font-size: 14px;
+}
+
+.share-generate-row span {
+  color: rgba(255, 255, 255, 0.54);
+  font-size: 11px;
+}
+
+.share-output {
+  border-top: 1px solid rgba(255, 255, 255, 0.14);
+  margin-top: 42px;
+  padding-top: 40px;
+  scroll-margin-top: 20px;
+}
+
 .share-studio {
   display: grid;
   gap: 18px;
-  grid-template-columns:
-    minmax(250px, 0.72fr)
-    minmax(330px, 1.18fr)
-    minmax(280px, 0.82fr);
+  grid-template-columns: minmax(280px, 0.78fr) minmax(330px, 1.22fr);
 }
 
 .share-studio > div {
@@ -2054,9 +2183,9 @@ summary {
 }
 
 .share-studio__controls {
-  display: flex;
-  flex-direction: column;
+  display: grid;
   gap: 22px;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
 }
 
 .share-control {
@@ -2400,7 +2529,7 @@ summary {
   }
 
   .share-studio__controls {
-    grid-column: 1 / -1;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 }
 
@@ -2433,8 +2562,35 @@ summary {
     display: none;
   }
 
+  .share-path-section {
+    padding-bottom: 48px;
+  }
+
+  .share-path-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .share-path-grid > button {
+    min-height: auto;
+    padding: 21px 18px;
+  }
+
   .share-studio-section {
     padding: 38px 0 48px;
+  }
+
+  .share-config-card {
+    padding: 20px;
+  }
+
+  .share-generate-row {
+    align-items: stretch;
+    flex-direction: column;
+    gap: 16px;
+  }
+
+  .share-generate-row .button {
+    width: 100%;
   }
 
   .share-studio {
@@ -2461,7 +2617,7 @@ summary {
 
   .share-studio__controls {
     grid-column: auto;
-    order: 3;
+    grid-template-columns: 1fr;
   }
 
   .share-studio__card .visual-card {

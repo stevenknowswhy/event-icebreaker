@@ -32,6 +32,7 @@ const MODE_COPY: Record<
     description: "Temporary readable link. Anyone with it can access it.",
   },
 };
+const DEEP_MODES: DeepConnectionMode[] = ["private", "agent-readable"];
 
 export function DeepShareControls({
   profile,
@@ -107,7 +108,7 @@ export function DeepShareControls({
       </div>
 
       <div className="deep-mode-grid">
-        {(Object.keys(MODE_COPY) as DeepConnectionMode[]).map((mode) => (
+        {DEEP_MODES.map((mode) => (
           <button
             className={preferences.mode === mode ? "is-active" : ""}
             type="button"

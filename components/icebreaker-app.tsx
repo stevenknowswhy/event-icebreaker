@@ -256,13 +256,9 @@ export function DownloadCardButton({ profile }: { profile: SharedProfile }) {
 function ShareControls({
   settings,
   onChange,
-  onGenerate,
-  canGenerate,
 }: {
   settings: ShareSettings;
   onChange: (settings: ShareSettings) => void;
-  onGenerate: () => void;
-  canGenerate: boolean;
 }) {
   return (
     <div className="share-studio__controls">
@@ -312,17 +308,11 @@ function ShareControls({
           }
         />
       </label>
-      <button
-        className="button button--primary"
-        type="button"
-        onClick={onGenerate}
-        disabled={!canGenerate}
-      >
-        Refresh share QR ↗
-      </button>
     </div>
   );
 }
+
+type SenderShareFlow = "quick" | "deep";
 
 function SenderMode() {
   const defaultSettings: ShareSettings = {
@@ -348,6 +338,8 @@ function SenderMode() {
   const [activeSessionKind, setActiveSessionKind] = useState<
     "private" | "agent-readable" | null
   >(null);
+  const [shareFlow, setShareFlow] = useState<SenderShareFlow | null>(null);
+  const [shareReady, setShareReady] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -483,14 +475,40 @@ function SenderMode() {
   function updateSettings(next: ShareSettings) {
     setSettings(next);
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
+    setShareReady(false);
+    setShareUrl("");
   }
 
   function updateDeepPreferences(next: DeepSharePreferences) {
     setDeepPreferences(next);
     localStorage.setItem(DEEP_SHARE_STORAGE_KEY, JSON.stringify(next));
+    setShareReady(false);
+    setShareUrl("");
+  }
+
+  function selectShareFlow(flow: SenderShareFlow) {
+    setShareFlow(flow);
+    setShareReady(false);
+    setShareUrl("");
+    if (flow === "deep" && deepPreferences.mode === "quick") {
+      const next = {
+        ...deepPreferences,
+        mode: "private" as const,
+      };
+      setDeepPreferences(next);
+      localStorage.setItem(DEEP_SHARE_STORAGE_KEY, JSON.stringify(next));
+    }
+    window.setTimeout(
+      () =>
+        document
+          .getElementById("share-controls")
+          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
+      0,
+    );
   }
 
   async function generateShare(scroll = true) {
+    if (!shareFlow) return;
     const nextShared = createSharedProfile(profile, settings);
     const quickPayload = encodePayload(nextShared);
     setGenerated(nextShared);
@@ -498,6 +516,7 @@ function SenderMode() {
     setSessionStatus("Preparing share…");
 
     if (
+      shareFlow === "deep" &&
       deepProfile &&
       deepPreferences.mode === "private"
     ) {
@@ -554,7 +573,10 @@ function SenderMode() {
       } catch {
         setSessionStatus("Deep unavailable · Quick Connect fallback ready");
       }
-    } else if (deepPreferences.mode === "agent-readable") {
+    } else if (
+      shareFlow === "deep" &&
+      deepPreferences.mode === "agent-readable"
+    ) {
       try {
         if (!deepPreferences.agentReadableAccepted) {
           throw new Error("AI-readable privacy exception not accepted.");
@@ -637,6 +659,7 @@ function SenderMode() {
     }
 
     setShareUrl(nextShareUrl);
+    setShareReady(true);
     if (scroll) {
       document
         .getElementById("share-studio")
@@ -697,93 +720,212 @@ function SenderMode() {
         </div>
       </section>
 
-      <section className="share-studio-section" id="share-studio">
+      <section className="share-path-section">
         <div className="shell">
-          <div className="section-heading section-heading--compact">
-            <div>
-              <p className="step-label">READY TO SHARE</p>
-              <h2>Your QR and card, front and center.</h2>
-            </div>
-            <span className="payload-meter">
-              {shareUrl.length} characters · {sessionStatus}
-            </span>
+          <div className="share-path-heading">
+            <p className="step-label">CHOOSE HOW TO CONNECT</p>
+            <h2>What would you like to send?</h2>
+            <p>
+              Start with a fast conversation signal, or intentionally unlock a
+              deeper Connection Story.
+            </p>
           </div>
-          <div className="share-studio">
-            <div className="share-studio__qr">
-              <div className="qr-frame">
-                {shareUrl ? (
-                  <QRCode
-                    value={shareUrl}
-                    size={256}
-                    level="M"
-                    bgColor="#ffffff"
-                    fgColor="#101114"
-                    aria-label="QR code for this Icebreaker profile"
-                  />
-                ) : (
-                  <div className="qr-placeholder">Preparing QR…</div>
-                )}
-              </div>
-              <div>
-                <h3>Scan with any phone camera</h3>
-                <p>No app or login. The profile opens as a normal web link.</p>
-              </div>
-              <div className="button-row">
-                <button
-                  className="button button--primary"
-                  type="button"
-                  onClick={shareProfile}
-                  disabled={!shareUrl}
-                >
-                  Share profile
-                </button>
-                <CopyButton label="Copy link" value={shareUrl} />
-                {activeSessionKind && (
-                  <button
-                    className="button button--quiet"
-                    type="button"
-                    onClick={() => void revokeDeepAccess()}
-                  >
-                    Revoke Deep access
-                  </button>
-                )}
-              </div>
-            </div>
-
-            <div className="share-studio__card">
-              <VisualCard profile={generated} />
-              <DownloadCardButton profile={generated} />
-              <p className="microcopy">
-                Save the card as an offline backup or lock-screen image.
-              </p>
-            </div>
-
-            <ShareControls
-              settings={settings}
-              onChange={updateSettings}
-              onGenerate={() => void generateShare(false)}
-              canGenerate={
-                Boolean(profile.name.trim()) &&
-                (deepPreferences.mode !== "agent-readable" ||
-                  deepPreferences.agentReadableAccepted)
-              }
-            />
+          <div className="share-path-grid">
+            <button
+              className={shareFlow === "quick" ? "is-active" : ""}
+              type="button"
+              aria-pressed={shareFlow === "quick"}
+              onClick={() => selectShareFlow("quick")}
+            >
+              <span className="share-path-number">01</span>
+              <span>
+                <strong>Send an Icebreaker</strong>
+                <small>
+                  Share your Visual Card, interests, Spark, and conversation
+                  starters.
+                </small>
+              </span>
+              <span className="share-path-arrow">→</span>
+            </button>
+            <button
+              className={shareFlow === "deep" ? "is-active" : ""}
+              type="button"
+              aria-pressed={shareFlow === "deep"}
+              onClick={() => selectShareFlow("deep")}
+            >
+              <span className="share-path-number">02</span>
+              <span>
+                <strong>Send a Deep Connection Request</strong>
+                <small>
+                  Share selected parts of your Personal Wiki with privacy,
+                  expiry, and link controls.
+                </small>
+              </span>
+              <span className="share-path-arrow">→</span>
+            </button>
           </div>
-          <DeepShareControls
-            profile={deepProfile}
-            quickSettings={settings}
-            preferences={deepPreferences}
-            onChange={updateDeepPreferences}
-          />
         </div>
       </section>
+
+      {shareFlow && (
+        <section className="share-studio-section" id="share-controls">
+          <div className="shell">
+            <div className="section-heading section-heading--compact">
+              <div>
+                <p className="step-label">
+                  {shareFlow === "quick"
+                    ? "ICEBREAKER CONTROLS"
+                    : "DEEP CONNECTION CONTROLS"}
+                </p>
+                <h2>
+                  {shareFlow === "quick"
+                    ? "Choose how much of your signal to send."
+                    : "Choose exactly what this request can unlock."}
+                </h2>
+              </div>
+              <button
+                className="button button--quiet"
+                type="button"
+                onClick={() => {
+                  setShareFlow(null);
+                  setShareReady(false);
+                  setShareUrl("");
+                }}
+              >
+                Change connection type
+              </button>
+            </div>
+
+            <div className="share-config-card">
+              <ShareControls
+                settings={settings}
+                onChange={updateSettings}
+              />
+            </div>
+
+            {shareFlow === "deep" && (
+              <DeepShareControls
+                profile={deepProfile}
+                quickSettings={settings}
+                preferences={deepPreferences}
+                onChange={updateDeepPreferences}
+              />
+            )}
+
+            <div className="share-generate-row">
+              <div>
+                <strong>Review complete?</strong>
+                <span>
+                  The QR appears only after you confirm these controls.
+                </span>
+              </div>
+              <button
+                className="button button--primary"
+                type="button"
+                onClick={() => void generateShare(true)}
+                disabled={
+                  !profile.name.trim() ||
+                  (shareFlow === "deep" && !deepProfile) ||
+                  (shareFlow === "deep" &&
+                    deepPreferences.mode === "agent-readable" &&
+                    !deepPreferences.agentReadableAccepted)
+                }
+              >
+                Generate QR to scan ↗
+              </button>
+            </div>
+
+            {shareReady && (
+              <div className="share-output" id="share-studio">
+                <div className="section-heading section-heading--compact">
+                  <div>
+                    <p className="step-label">READY FOR THE RECEIVER</p>
+                    <h2>Show this QR for them to scan.</h2>
+                  </div>
+                  <span className="payload-meter">
+                    {shareUrl.length} characters · {sessionStatus}
+                  </span>
+                </div>
+                <div className="share-studio">
+                  <div className="share-studio__qr">
+                    <div className="qr-frame">
+                      <QRCode
+                        value={shareUrl}
+                        size={256}
+                        level="M"
+                        bgColor="#ffffff"
+                        fgColor="#101114"
+                        aria-label="QR code for this Icebreaker profile"
+                      />
+                    </div>
+                    <div>
+                      <h3>Scan with any phone camera</h3>
+                      <p>
+                        No app or login. The profile opens as a normal web link.
+                      </p>
+                    </div>
+                    <div className="button-row">
+                      <button
+                        className="button button--primary"
+                        type="button"
+                        onClick={shareProfile}
+                      >
+                        Share profile
+                      </button>
+                      <CopyButton label="Copy link" value={shareUrl} />
+                      {activeSessionKind && (
+                        <button
+                          className="button button--quiet"
+                          type="button"
+                          onClick={() => void revokeDeepAccess()}
+                        >
+                          Revoke Deep access
+                        </button>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="share-studio__card">
+                    <VisualCard profile={generated} />
+                    <DownloadCardButton profile={generated} />
+                    <p className="microcopy">
+                      Save the card as an offline backup or lock-screen image.
+                    </p>
+                  </div>
+                </div>
+
+                <div className="fallback-grid fallback-grid--compact">
+                  <details>
+                    <summary>Shareable URL</summary>
+                    <code>{shareUrl}</code>
+                    <CopyButton
+                      label="Copy share URL"
+                      value={shareUrl}
+                      variant="quiet"
+                    />
+                  </details>
+                  <details>
+                    <summary>Connection String fallback</summary>
+                    <pre>{connectionString}</pre>
+                    <CopyButton
+                      label="Copy Connection String"
+                      value={connectionString}
+                      variant="quiet"
+                    />
+                  </details>
+                </div>
+              </div>
+            )}
+          </div>
+        </section>
+      )}
 
       <section className="builder-section">
         <div className="shell compact-builder">
           <ProfileSetup
             profile={profile}
             onChange={updateProfile}
-            onFinish={() => void generateShare(true)}
+            onFinish={() => selectShareFlow("quick")}
             saveState={saveState}
           />
 
@@ -800,27 +942,6 @@ function SenderMode() {
               Create my Connection Story
             </a>
           </article>
-
-          <div className="fallback-grid fallback-grid--compact">
-            <details>
-              <summary>Shareable URL</summary>
-              <code>{shareUrl}</code>
-              <CopyButton
-                label="Copy share URL"
-                value={shareUrl}
-                variant="quiet"
-              />
-            </details>
-            <details>
-              <summary>Connection String fallback</summary>
-              <pre>{connectionString}</pre>
-              <CopyButton
-                label="Copy Connection String"
-                value={connectionString}
-                variant="quiet"
-              />
-            </details>
-          </div>
         </div>
       </section>
 
