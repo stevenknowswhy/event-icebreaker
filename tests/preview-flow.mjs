@@ -48,6 +48,14 @@ try {
   assert.equal(await sender.locator(".share-studio__controls").count(), 1);
   assert.equal(await sender.locator(".qr-frame svg").count(), 0);
   await sender
+    .getByRole("button", { name: "Send an Icebreaker" })
+    .click();
+  assert.equal(await sender.locator(".share-studio__controls").count(), 0);
+  assert.equal(await sender.locator(".qr-frame svg").count(), 0);
+  await sender
+    .getByRole("button", { name: "Send an Icebreaker" })
+    .click();
+  await sender
     .getByRole("button", { name: /Generate QR to scan/i })
     .click();
   assert.equal(await sender.locator(".qr-frame svg").count(), 1);

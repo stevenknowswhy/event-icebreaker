@@ -487,6 +487,12 @@ function SenderMode() {
   }
 
   function selectShareFlow(flow: SenderShareFlow) {
+    if (shareFlow === flow) {
+      setShareFlow(null);
+      setShareReady(false);
+      setShareUrl("");
+      return;
+    }
     setShareFlow(flow);
     setShareReady(false);
     setShareUrl("");
@@ -498,13 +504,6 @@ function SenderMode() {
       setDeepPreferences(next);
       localStorage.setItem(DEEP_SHARE_STORAGE_KEY, JSON.stringify(next));
     }
-    window.setTimeout(
-      () =>
-        document
-          .getElementById("share-controls")
-          ?.scrollIntoView({ behavior: "smooth", block: "start" }),
-      0,
-    );
   }
 
   async function generateShare(scroll = true) {
@@ -735,6 +734,8 @@ function SenderMode() {
               className={shareFlow === "quick" ? "is-active" : ""}
               type="button"
               aria-pressed={shareFlow === "quick"}
+              aria-expanded={shareFlow === "quick"}
+              aria-controls="share-controls"
               onClick={() => selectShareFlow("quick")}
             >
               <span className="share-path-number">01</span>
@@ -751,6 +752,8 @@ function SenderMode() {
               className={shareFlow === "deep" ? "is-active" : ""}
               type="button"
               aria-pressed={shareFlow === "deep"}
+              aria-expanded={shareFlow === "deep"}
+              aria-controls="share-controls"
               onClick={() => selectShareFlow("deep")}
             >
               <span className="share-path-number">02</span>
@@ -792,7 +795,7 @@ function SenderMode() {
                   setShareUrl("");
                 }}
               >
-                Change connection type
+                Hide controls
               </button>
             </div>
 
