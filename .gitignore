@@ -3,4 +3,13 @@ dist/
 .next/
 .wrangler/
 artifacts/
+tsconfig.tsbuildinfo
+.pytest_cache/
+.ruff_cache/
+.venv/
+__pycache__/
+*.pyc
+.env
+.env.*
+!.env.example
 .DS_Store

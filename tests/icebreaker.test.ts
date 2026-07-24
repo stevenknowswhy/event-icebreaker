@@ -78,6 +78,57 @@ test("medium openness shares what Stefano offers and is looking for", () => {
   assert.equal(shared.q, SAMPLE_PROFILE.lookingFor);
 });
 
+test("shares a public profile URL only after explicit consent", () => {
+  const profile = {
+    ...SAMPLE_PROFILE,
+    publicProfileUrl: "https://example.com/stefano",
+  };
+  const privateCard = createSharedProfile(profile, {
+    openness: "high",
+    intent: "networking",
+    includeSpark: true,
+    includePublicProfile: false,
+  });
+  const publicCard = createSharedProfile(profile, {
+    openness: "high",
+    intent: "networking",
+    includeSpark: true,
+    includePublicProfile: true,
+  });
+
+  assert.equal("u" in privateCard, false);
+  assert.equal(publicCard.u, "https://example.com/stefano");
+  assert.deepEqual(decodePayload(encodePayload(publicCard)), publicCard);
+});
+
+test("rejects unsafe public profile URLs in shared cards", () => {
+  const shared = createSharedProfile(
+    {
+      ...SAMPLE_PROFILE,
+      publicProfileUrl: "https://example.com/stefano",
+    },
+    {
+      openness: "high",
+      intent: "networking",
+      includeSpark: true,
+      includePublicProfile: true,
+    },
+  );
+
+  assert.throws(
+    () => validateSharedProfile({ ...shared, u: "http://example.com/stefano" }),
+    /public profile/i,
+  );
+  assert.throws(
+    () =>
+      validateSharedProfile({
+        ...shared,
+        u: "https://user:password@example.com/stefano",
+      }),
+    /public profile/i,
+  );
+});
+
 test("validates supported payloads and rejects malformed profiles", () => {
   const valid = createSharedProfile(SAMPLE_PROFILE, {
     openness: "medium",
@@ -187,4 +238,12 @@ test("ships a real Stefano profile and migrates only the old placeholder", () =>
     spark: "A genuinely custom idea",
   };
   assert.deepEqual(migrateStoredProfile(customProfile), customProfile);
+
+  const oldProfileWithoutPublicUrl = { ...customProfile };
+  delete (oldProfileWithoutPublicUrl as Partial<typeof customProfile>)
+    .publicProfileUrl;
+  assert.equal(
+    migrateStoredProfile(oldProfileWithoutPublicUrl).publicProfileUrl,
+    "",
+  );
 });

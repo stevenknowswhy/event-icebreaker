@@ -23,6 +23,7 @@ export type FullProfile = {
   values: string[];
   communicationStyle: string;
   funFact: string;
+  publicProfileUrl: string;
   personality: [number, number, number, number, number];
 };
 
@@ -30,6 +31,7 @@ export type ShareSettings = {
   openness: Openness;
   intent: Intent;
   includeSpark: boolean;
+  includePublicProfile?: boolean;
 };
 
 export type SharedProfile = {
@@ -46,6 +48,7 @@ export type SharedProfile = {
   va?: string[];
   c?: string;
   f?: string;
+  u?: string;
   p?: [number, number, number, number, number];
 };
 
@@ -70,6 +73,7 @@ export const SAMPLE_PROFILE: FullProfile = {
   values: ["Preparedness", "Public Service", "Clarity"],
   communicationStyle: "Direct, practical, and systems-minded",
   funFact: "Ask me what most cities misunderstand about disaster preparedness.",
+  publicProfileUrl: "",
   personality: [0.8, 0.8, 0.55, 0.72, 0.3],
 };
 
@@ -84,6 +88,7 @@ const TEXT_LIMITS = {
   value: 40,
   communication: 160,
   funFact: 220,
+  publicProfileUrl: 2048,
 } as const;
 
 function cleanText(value: string, maxLength: number): string {
@@ -99,6 +104,25 @@ function cleanList(
     .map((value) => cleanText(value, itemLimit))
     .filter(Boolean)
     .slice(0, maxItems);
+}
+
+export function validatePublicProfileUrl(value: string): string {
+  if (!value.trim() || value.length > TEXT_LIMITS.publicProfileUrl) {
+    throw new Error("The public profile URL is invalid.");
+  }
+
+  let url: URL;
+  try {
+    url = new URL(value.trim());
+  } catch {
+    throw new Error("The public profile URL is invalid.");
+  }
+
+  if (url.protocol !== "https:" || url.username || url.password) {
+    throw new Error("The public profile URL must be a safe HTTPS URL.");
+  }
+
+  return url.href;
 }
 
 export function createSharedProfile(
@@ -117,6 +141,10 @@ export function createSharedProfile(
 
   const role = cleanText(profile.role, TEXT_LIMITS.role);
   if (role) shared.r = role;
+
+  if (settings.includePublicProfile && profile.publicProfileUrl.trim()) {
+    shared.u = validatePublicProfileUrl(profile.publicProfileUrl);
+  }
 
   if (settings.includeSpark) {
     const spark = cleanText(profile.spark, TEXT_LIMITS.spark);
@@ -302,6 +330,12 @@ export function validateSharedProfile(value: unknown): SharedProfile {
     TEXT_LIMITS.communication,
   );
   const funFact = readText(value, "f", "fun fact", TEXT_LIMITS.funFact);
+  const publicProfileUrl = readText(
+    value,
+    "u",
+    "public profile URL",
+    TEXT_LIMITS.publicProfileUrl,
+  );
 
   if (role !== undefined) profile.r = role;
   if (spark !== undefined) profile.s = spark;
@@ -311,6 +345,9 @@ export function validateSharedProfile(value: unknown): SharedProfile {
   if (values !== undefined) profile.va = values;
   if (communication !== undefined) profile.c = communication;
   if (funFact !== undefined) profile.f = funFact;
+  if (publicProfileUrl !== undefined) {
+    profile.u = validatePublicProfileUrl(publicProfileUrl);
+  }
 
   if (value.p !== undefined) {
     if (
@@ -496,6 +533,10 @@ export function migrateStoredProfile(value: unknown): FullProfile {
         ? value.communicationStyle
         : "",
     funFact: typeof value.funFact === "string" ? value.funFact : "",
+    publicProfileUrl:
+      typeof value.publicProfileUrl === "string"
+        ? value.publicProfileUrl
+        : "",
     personality,
   };
 }

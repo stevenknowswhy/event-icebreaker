@@ -1,0 +1,30 @@
+services:
+  - type: web
+    name: coffee-or-disco-warm-path
+    runtime: python
+    rootDir: services/warm-path
+    buildCommand: uv sync --frozen --no-dev
+    startCommand: uv run --no-dev uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    healthCheckPath: /health
+    autoDeployTrigger: checksPass
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.12.11
+      - key: SERVICE_TOKEN
+        generateValue: true
+      - key: YOU_API_KEY
+        sync: false
+      - key: PARASAIL_API_KEY
+        sync: false
+      - key: PARASAIL_MODEL
+        value: parasail-qwen3-32b
+      - key: PARASAIL_AUDITOR_MODEL
+        value: parasail-deepseek-31
+      - key: PICA_SECRET
+        sync: false
+      - key: PICA_CONNECTION_KEY
+        sync: false
+      - key: PICA_GMAIL_SEND_ACTION_ID
+        sync: false
+      - key: PICA_FROM_EMAIL
+        sync: false

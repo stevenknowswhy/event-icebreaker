@@ -7,6 +7,11 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { downloadVisualCard } from "../lib/card-download";
 import {
+  MY_CIRCLE_STORAGE_KEY,
+  parseCircleContacts,
+  saveCircleContact,
+} from "../lib/my-circle";
+import {
   OPENNESS_LEVELS,
   SAMPLE_PROFILE,
   createAiPrompt,
@@ -17,6 +22,7 @@ import {
   encodePayload,
   extractEncodedPayload,
   migrateStoredProfile,
+  validatePublicProfileUrl,
   type FullProfile,
   type Intent,
   type Openness,
@@ -70,6 +76,15 @@ async function copyText(text: string): Promise<void> {
   if (!copied) throw new Error("Copying is unavailable in this browser.");
 }
 
+function canSharePublicUrl(value: string): boolean {
+  try {
+    validatePublicProfileUrl(value);
+    return true;
+  } catch {
+    return false;
+  }
+}
+
 function VisualCard({ profile }: { profile: SharedProfile }) {
   const openness = Object.keys(OPENNESS_LEVELS).find(
     (key) => OPENNESS_LEVELS[key as Openness] === profile.o,
@@ -116,6 +131,16 @@ function VisualCard({ profile }: { profile: SharedProfile }) {
               </p>
             )}
           </div>
+        )}
+        {profile.u && (
+          <a
+            className="visual-card__profile-link"
+            href={profile.u}
+            rel="noreferrer"
+            target="_blank"
+          >
+            Public profile ↗
+          </a>
         )}
       </div>
       <div className="visual-card__footer">
@@ -188,11 +213,13 @@ function ShareControls({
   onChange,
   onGenerate,
   canGenerate,
+  canSharePublicProfile,
 }: {
   settings: ShareSettings;
   onChange: (settings: ShareSettings) => void;
   onGenerate: () => void;
   canGenerate: boolean;
+  canSharePublicProfile: boolean;
 }) {
   return (
     <div className="share-studio__controls">
@@ -242,6 +269,25 @@ function ShareControls({
           }
         />
       </label>
+      <label className="toggle-row toggle-row--compact">
+        <span>
+          <strong>Share public profile</strong>
+          <small>
+            Gives people an identity anchor for consent-based Warm Paths
+          </small>
+        </span>
+        <input
+          type="checkbox"
+          checked={Boolean(settings.includePublicProfile)}
+          disabled={!canSharePublicProfile}
+          onChange={(event) =>
+            onChange({
+              ...settings,
+              includePublicProfile: event.target.checked,
+            })
+          }
+        />
+      </label>
       <button
         className="button button--primary"
         type="button"
@@ -259,6 +305,7 @@ function SenderMode() {
     openness: "high",
     intent: "networking",
     includeSpark: true,
+    includePublicProfile: false,
   };
   const [profile, setProfile] = useState<FullProfile>(SAMPLE_PROFILE);
   const [settings, setSettings] = useState<ShareSettings>(defaultSettings);
@@ -276,12 +323,15 @@ function SenderMode() {
         const nextProfile = savedProfile
           ? migrateStoredProfile(JSON.parse(savedProfile))
           : SAMPLE_PROFILE;
-        const nextSettings = savedSettings
+        const storedSettings = savedSettings
           ? ({
               ...defaultSettings,
               ...JSON.parse(savedSettings),
             } as ShareSettings)
           : defaultSettings;
+        const nextSettings = canSharePublicUrl(nextProfile.publicProfileUrl)
+          ? storedSettings
+          : { ...storedSettings, includePublicProfile: false };
         const nextShared = createSharedProfile(nextProfile, nextSettings);
 
         setProfile(nextProfile);
@@ -311,6 +361,10 @@ function SenderMode() {
     () => createConnectionString(encodedPayload),
     [encodedPayload],
   );
+  const canSharePublicProfile = useMemo(
+    () => canSharePublicUrl(profile.publicProfileUrl),
+    [profile.publicProfileUrl],
+  );
 
   function updateProfile<K extends keyof FullProfile>(
     key: K,
@@ -321,6 +375,13 @@ function SenderMode() {
       localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(next));
       return next;
     });
+    if (
+      key === "publicProfileUrl" &&
+      settings.includePublicProfile &&
+      !canSharePublicUrl(String(value))
+    ) {
+      updateSettings({ ...settings, includePublicProfile: false });
+    }
     setSaveState("Saved on this device");
   }
 
@@ -436,6 +497,7 @@ function SenderMode() {
               onChange={updateSettings}
               onGenerate={() => generateShare(false)}
               canGenerate={Boolean(profile.name.trim())}
+              canSharePublicProfile={canSharePublicProfile}
             />
           </div>
         </div>
@@ -483,6 +545,7 @@ function ReceiverMode() {
   const [error, setError] = useState("");
   const [manualInput, setManualInput] = useState("");
   const [sourcePayload, setSourcePayload] = useState("");
+  const [savedToCircle, setSavedToCircle] = useState(false);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -515,6 +578,25 @@ function ReceiverMode() {
           ? caught.message
           : "That Connection String could not be opened.",
       );
+    }
+  }
+
+  function saveToCircle() {
+    if (!profile) return;
+    try {
+      const stored = localStorage.getItem(MY_CIRCLE_STORAGE_KEY);
+      const contacts = stored
+        ? parseCircleContacts(JSON.parse(stored))
+        : [];
+      const next = saveCircleContact(
+        contacts,
+        profile,
+        sourcePayload || encodePayload(profile),
+      );
+      localStorage.setItem(MY_CIRCLE_STORAGE_KEY, JSON.stringify(next));
+      setSavedToCircle(true);
+    } catch {
+      setSavedToCircle(false);
     }
   }
 
@@ -576,6 +658,13 @@ function ReceiverMode() {
             because you saw this.
           </p>
           <DownloadCardButton profile={profile} />
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={saveToCircle}
+          >
+            {savedToCircle ? "Saved to My Circle ✓" : "Save to My Circle"}
+          </button>
         </div>
         <div className="receiver-card-wrap">
           <VisualCard profile={profile} />
@@ -677,7 +766,11 @@ function ReceiverMode() {
   );
 }
 
-function SiteHeader({ mode }: { mode: "sender" | "receiver" }) {
+export function SiteHeader({
+  mode,
+}: {
+  mode: "sender" | "receiver" | "circle" | "warm-path";
+}) {
   const [demoOpen, setDemoOpen] = useState(false);
   const closeDemo = useCallback(() => setDemoOpen(false), []);
 
@@ -692,6 +785,9 @@ function SiteHeader({ mode }: { mode: "sender" | "receiver" }) {
             </span>
           </a>
           <div className="site-header__actions">
+            <a className="demo-button" href="/circle">
+              My Circle
+            </a>
             <button
               className="demo-button"
               type="button"
@@ -701,7 +797,9 @@ function SiteHeader({ mode }: { mode: "sender" | "receiver" }) {
             </button>
             <div className="mode-chip">
               <span className="mode-chip__dot" />
-              {mode === "sender" ? "Sender" : "Receiver"}
+              {mode === "warm-path"
+                ? "Warm Path"
+                : mode.slice(0, 1).toUpperCase() + mode.slice(1)}
             </div>
           </div>
         </div>
@@ -711,7 +809,7 @@ function SiteHeader({ mode }: { mode: "sender" | "receiver" }) {
   );
 }
 
-function SiteFooter() {
+export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="shell site-footer__inner">

@@ -1,0 +1,1 @@
+"""Least-privilege upstream adapters."""

@@ -1,0 +1,66 @@
+{
+  "request": {
+    "targetUrl": "https://fund.example/people/elena",
+    "contacts": [
+      {
+        "name": "Maya Chen",
+        "role": "Founder",
+        "publicProfileUrl": "https://people.example/maya",
+        "askConfirmed": true
+      }
+    ]
+  },
+  "response": {
+    "target": {
+      "name": "Elena Park",
+      "organization": "Aster Ventures",
+      "url": "https://fund.example/people/elena"
+    },
+    "paths": [
+      {
+        "contactName": "Maya Chen",
+        "strength": "possible",
+        "explanation": "A public accelerator overlap is worth asking about.",
+        "uncertainty": "Public overlap does not prove a personal relationship.",
+        "edges": [
+          {
+            "from": "Maya Chen",
+            "relationship": "program mentor",
+            "to": "Civic Futures",
+            "citations": [
+              {
+                "title": "Civic Futures mentor directory",
+                "url": "https://evidence.example/civic-futures",
+                "publishedAt": "2026-04-15"
+              }
+            ]
+          }
+        ],
+        "introRequest": "Would you be comfortable helping me understand whether an introduction would be appropriate?"
+      }
+    ]
+  },
+  "invalidResponse": {
+    "target": {
+      "name": "Elena Park",
+      "url": "https://fund.example/people/elena"
+    },
+    "paths": [
+      {
+        "contactName": "Maya Chen",
+        "strength": "strong",
+        "explanation": "An unsupported claim.",
+        "uncertainty": "No citation exists.",
+        "edges": [
+          {
+            "from": "Maya Chen",
+            "relationship": "knows",
+            "to": "Elena Park",
+            "citations": []
+          }
+        ],
+        "introRequest": "Please introduce me."
+      }
+    ]
+  }
+}

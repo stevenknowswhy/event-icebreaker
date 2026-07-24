@@ -35,6 +35,8 @@ test("server-renders the Event Icebreaker sender experience", async () => {
   assert.match(html, /60-sec demo/);
   assert.match(html, /Download card/);
   assert.match(html, /Connection String fallback/);
+  assert.match(html, /Public professional URL/);
+  assert.match(html, /Share public profile/);
   assert.match(html, /Stefano/);
   assert.doesNotMatch(html, /\bJames\b/);
   assert.match(html, /strengthen disaster readiness/);
@@ -55,4 +57,27 @@ test("server-renders receiver recovery without requiring profile data", async ()
   assert.match(html, /Build my own profile instead/);
   assert.match(html, /No accounts\. No database\. No analytics\./);
   assert.doesNotMatch(html, /login|sign in/i);
+});
+
+test("server-renders the local My Circle experience", async () => {
+  const response = await render("/circle");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /My Circle/);
+  assert.match(html, /Your Circle starts with a real exchange/);
+  assert.match(html, /Saved only on this device/);
+  assert.match(html, /Find a Warm Path/);
+});
+
+test("server-renders the Warm Path research experience", async () => {
+  const response = await render("/warm-path");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /Find the human path/);
+  assert.match(html, /Target investor or fund URL/);
+  assert.match(html, /Only selected contacts leave this device/);
+  assert.match(html, /Load a cited demo/);
+  assert.match(html, /No scraped social graph/);
 });

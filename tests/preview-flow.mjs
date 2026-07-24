@@ -2,7 +2,7 @@ import assert from "node:assert/strict";
 import { mkdir } from "node:fs/promises";
 import { chromium } from "playwright";
 
-const origin = "http://localhost:3000";
+const origin = process.env.PREVIEW_ORIGIN ?? "http://localhost:3000";
 const browser = await chromium.launch({ headless: true });
 const context = await browser.newContext({
   viewport: { width: 390, height: 844 },
@@ -112,6 +112,10 @@ try {
     (await receiver.locator(".decoded-locally").textContent()) ?? "",
     /nothing was uploaded/i,
   );
+  await receiver.getByRole("button", { name: "Save to My Circle" }).click();
+  await receiver
+    .getByRole("button", { name: "Saved to My Circle ✓" })
+    .waitFor();
   assert.equal(await receiver.locator(".starter-grid li").count(), 3);
   assert.match(
     (await receiver.locator(".starter-grid").textContent()) ?? "",
@@ -131,6 +135,16 @@ try {
   assert.match(copiedPrompt, /## Best first move/);
   assert.match(copiedPrompt, /untrusted profile data/i);
   assert.match(copiedPrompt, /five brief questions, one at a time/i);
+
+  const circle = await context.newPage();
+  watchPage(circle);
+  await circle.goto(`${origin}/circle`, { waitUntil: "networkidle" });
+  assert.equal(await circle.locator("h1").textContent(), "My Circle.");
+  assert.match(await circle.locator(".circle-list").textContent(), /Stefano/);
+  assert.match(
+    await circle.locator(".circle-list").textContent(),
+    /Public URL needed for research/,
+  );
 
   const invalid = await context.newPage();
   watchPage(invalid);

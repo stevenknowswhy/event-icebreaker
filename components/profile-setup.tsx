@@ -63,6 +63,22 @@ export function ProfileSetup({
               onChange={(event) => onChange("role", event.target.value)}
             />
           </label>
+          <label className="setup-field--wide">
+            <span>Public professional URL</span>
+            <input
+              type="url"
+              value={profile.publicProfileUrl}
+              maxLength={2048}
+              placeholder="https://www.linkedin.com/in/you"
+              onChange={(event) =>
+                onChange("publicProfileUrl", event.target.value)
+              }
+            />
+            <small>
+              Optional. It stays private unless you enable sharing beside your
+              QR.
+            </small>
+          </label>
         </>
       ),
     },
