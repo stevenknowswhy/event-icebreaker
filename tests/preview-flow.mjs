@@ -152,15 +152,197 @@ try {
     fullPage: true,
   });
 
-  assert.deepEqual(issues, []);
+  const deepBuilder = await context.newPage();
+  watchPage(deepBuilder);
+  await deepBuilder.goto(`${origin}/deep/setup`, { waitUntil: "networkidle" });
+  assert.equal(
+    await deepBuilder.locator("h1").first().textContent(),
+    "Build your Connection Story.",
+  );
+  const overviewStory = deepBuilder
+    .locator(".deep-section-list details")
+    .first()
+    .locator("textarea")
+    .first();
+  await overviewStory.fill(
+    "I connect emergency management, trustworthy AI, and practical collaboration.",
+  );
+  await deepBuilder.getByText("Saved on this device").first().waitFor();
+  assert.match(
+    (await deepBuilder.locator(".personal-wiki").textContent()) ?? "",
+    /trustworthy AI/i,
+  );
+
+  await sender.goto(`${origin}/`, { waitUntil: "networkidle" });
+  await sender.getByRole("heading", {
+    name: "Choose what this QR can unlock.",
+  }).waitFor();
+  await sender.getByRole("button", { name: /Private Deep/i }).click();
+  await sender
+    .getByRole("button", { name: /Refresh share QR/i })
+    .click();
+  await sender
+    .locator(".payload-meter")
+    .filter({ hasText: "Private Deep ready" })
+    .waitFor({ timeout: 10_000 });
+
+  const privateShareUrl = await sender
+    .locator(".fallback-grid details")
+    .first()
+    .locator("code")
+    .textContent();
+  assert.ok(privateShareUrl?.startsWith(`${origin}/c/`));
+  assert.match(privateShareUrl ?? "", /#v=2&/);
+  assert.match(privateShareUrl ?? "", /&m=p&k=/);
+  assert.equal(
+    (privateShareUrl ?? "").includes("trustworthy"),
+    false,
+  );
+
+  const privateReceiver = await context.newPage();
+  watchPage(privateReceiver);
+  await privateReceiver.goto(privateShareUrl, { waitUntil: "networkidle" });
+  await privateReceiver
+    .locator(".personal-wiki")
+    .filter({ hasText: "trustworthy AI" })
+    .waitFor({ timeout: 10_000 });
+  assert.match(
+    (await privateReceiver.locator(".deep-receiver-status").textContent()) ??
+      "",
+    /Decrypted privately on this device/i,
+  );
+  await privateReceiver
+    .getByRole("button", { name: "Copy approved context for AI" })
+    .click();
+  const deepPrompt = await privateReceiver.evaluate(() =>
+    navigator.clipboard.readText(),
+  );
+  assert.match(deepPrompt, /<deep_profile protocol="2">/);
+  assert.match(deepPrompt, /untrusted profile data/i);
+  assert.match(deepPrompt, /Do not infer sensitive traits/i);
+
+  await privateReceiver.getByPlaceholder("Mary").fill("Mary");
+  await privateReceiver
+    .getByPlaceholder(/problem, project, or question/i)
+    .fill("Reliable AI support workflows");
+  await privateReceiver
+    .getByPlaceholder(/Experience, access, skills/i)
+    .fill("Agent evaluation and production integrations");
+  await privateReceiver
+    .getByPlaceholder(/People, knowledge, feedback/i)
+    .fill("High-stakes public-interest use cases");
+  await privateReceiver
+    .getByText(/Current focus: Reliable AI support workflows/i)
+    .waitFor();
+  const mutualConfirm = privateReceiver.locator(".mutual-confirm input");
+  await mutualConfirm.check();
+  await privateReceiver
+    .getByRole("button", { name: "Find our connection" })
+    .click();
+  await privateReceiver
+    .getByText("YOUR CONNECTION BRIEF")
+    .waitFor();
+  assert.match(
+    (await privateReceiver.locator(".connection-brief").textContent()) ?? "",
+    /Agent evaluation/i,
+  );
+  assert.equal(
+    await privateReceiver.evaluate(() =>
+      Object.keys(localStorage).some((key) => key.includes("mutual")),
+    ),
+    false,
+  );
+
+  await sender.getByRole("button", { name: /AI-readable/i }).click();
+  await sender
+    .getByText(/I understand that anyone or any AI/i)
+    .locator("..")
+    .locator("input")
+    .check();
+  await sender
+    .getByRole("button", { name: /Refresh share QR/i })
+    .click();
+  await sender
+    .locator(".payload-meter")
+    .filter({ hasText: "AI-readable Deep ready" })
+    .waitFor({ timeout: 10_000 });
+  const agentShareUrl = await sender
+    .locator(".fallback-grid details")
+    .first()
+    .locator("code")
+    .textContent();
+  assert.ok(agentShareUrl?.startsWith(`${origin}/c/`));
+  assert.match(agentShareUrl ?? "", /&m=a/);
+  assert.equal((agentShareUrl ?? "").includes("&k="), false);
+
+  const agentReceiver = await context.newPage();
+  watchPage(agentReceiver);
+  await agentReceiver.goto(agentShareUrl, { waitUntil: "networkidle" });
+  await agentReceiver
+    .locator(".deep-receiver-status")
+    .filter({ hasText: "Readable temporary profile loaded" })
+    .waitFor({ timeout: 10_000 });
+  assert.match(
+    (await agentReceiver.locator(".deep-receiver-notice").textContent()) ?? "",
+    /privacy exception/i,
+  );
+  const agentTextUrl = await agentReceiver
+    .getByRole("link", { name: "Open AI-readable text" })
+    .getAttribute("href");
+  const agentText = await (
+    await context.request.get(`${origin}${agentTextUrl}`)
+  ).text();
+  assert.match(agentText, /untrusted profile data/i);
+  assert.match(agentText, /trustworthy AI/i);
+
+  const agentToken = new URL(agentShareUrl).pathname.split("/").pop();
+  await sender.getByRole("button", { name: "Revoke Deep access" }).click();
+  await sender
+    .locator(".payload-meter")
+    .filter({ hasText: "Deep access revoked" })
+    .waitFor({ timeout: 10_000 });
+  assert.equal(
+    (
+      await context.request.get(
+        `${origin}/api/agent-profiles/${agentToken}`,
+      )
+    ).status(),
+    410,
+  );
+  const revokedReceiver = await context.newPage();
+  watchPage(revokedReceiver);
+  await revokedReceiver.goto(agentShareUrl, {
+    waitUntil: "domcontentloaded",
+  });
+  assert.equal(
+    await revokedReceiver.locator(".visual-card h2").textContent(),
+    "Stefano",
+  );
+  await revokedReceiver
+    .locator(".deep-fallback-message")
+    .filter({ hasText: /expired or was revoked/i })
+    .waitFor({ timeout: 10_000 });
+
+  await privateReceiver.screenshot({
+    path: "artifacts/deep-connect-mobile.png",
+    fullPage: true,
+  });
+
+  const unexpectedIssues = issues.filter(
+    (issue) => !issue.includes("status of 410 (Gone)"),
+  );
+  assert.deepEqual(unexpectedIssues, []);
   console.log(
     JSON.stringify(
       {
         sender: "passed",
         receiver: "passed",
         invalidLinkRecovery: "passed",
+        privateDeep: "passed",
+        mutualConnect: "passed",
+        agentReadable: "passed",
         shareUrlLength: shareUrl.length,
-        consoleIssues: issues.length,
+        consoleIssues: unexpectedIssues.length,
       },
       null,
       2,

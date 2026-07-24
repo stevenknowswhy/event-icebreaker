@@ -7,6 +7,24 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 
 import { downloadVisualCard } from "../lib/card-download";
 import {
+  DEEP_PROFILE_STORAGE_KEY,
+  DEEP_SHARE_STORAGE_KEY,
+  createDefaultDeepProfile,
+  createDefaultDeepSharePreferences,
+  createDeepSnapshot,
+  validateDeepProfile,
+  validateDeepSharePreferences,
+  type DeepProfile,
+  type DeepSharePreferences,
+} from "../lib/deep-profile";
+import { encryptDeepSnapshot } from "../lib/deep-crypto";
+import {
+  calculateDeepExpiry,
+  validateRevokeToken,
+  validateSessionToken,
+} from "../lib/deep-session";
+import { createHybridShareUrl } from "../lib/hybrid-url";
+import {
   OPENNESS_LEVELS,
   SAMPLE_PROFILE,
   createAiPrompt,
@@ -24,10 +42,13 @@ import {
   type SharedProfile,
 } from "../lib/icebreaker";
 import { DemoMode } from "./demo-mode";
+import { DeepShareControls } from "./deep-share-controls";
 import { ProfileSetup } from "./profile-setup";
 
 const PROFILE_STORAGE_KEY = "event-icebreaker.profile.v1";
 const SETTINGS_STORAGE_KEY = "event-icebreaker.settings.v1";
+const PRIVATE_SESSION_STORAGE_KEY = "event-icebreaker.private-session.v1";
+const AGENT_SESSION_STORAGE_KEY = "event-icebreaker.agent-session.v1";
 const QRCode =
   (
     QRCodeModule as unknown as {
@@ -48,6 +69,41 @@ const INTENT_LABELS: Record<Intent, string> = {
   dating: "Dating",
   general: "General",
 };
+
+type StoredPrivateSession = {
+  sessionToken: string;
+  revokeToken: string;
+  decryptionKey: string;
+  expiresAt: number;
+  quickPayload: string;
+};
+
+type StoredAgentSession = {
+  sessionToken: string;
+  revokeToken: string;
+  expiresAt: number;
+  quickPayload: string;
+};
+
+async function revokeStoredSession(
+  value: string,
+  endpoint: "deep-sessions" | "agent-profiles",
+): Promise<boolean> {
+  try {
+    const session = JSON.parse(value) as StoredPrivateSession | StoredAgentSession;
+    const sessionToken = validateSessionToken(session.sessionToken);
+    const revokeToken = validateRevokeToken(session.revokeToken);
+    const response = await fetch(`/api/${endpoint}/${sessionToken}`, {
+      method: "DELETE",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ revokeToken }),
+    });
+    return response.ok;
+  } catch {
+    // Revocation is best-effort; every session still expires automatically.
+    return false;
+  }
+}
 
 async function copyText(text: string): Promise<void> {
   if (navigator.clipboard && window.isSecureContext) {
@@ -70,7 +126,21 @@ async function copyText(text: string): Promise<void> {
   if (!copied) throw new Error("Copying is unavailable in this browser.");
 }
 
-function VisualCard({ profile }: { profile: SharedProfile }) {
+async function createTemporarySession(
+  endpoint: "/api/deep-sessions" | "/api/agent-profiles",
+  body: Record<string, unknown>,
+): Promise<Response> {
+  const request = () =>
+    fetch(endpoint, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify(body),
+    });
+  const response = await request();
+  return response.status >= 500 ? request() : response;
+}
+
+export function VisualCard({ profile }: { profile: SharedProfile }) {
   const openness = Object.keys(OPENNESS_LEVELS).find(
     (key) => OPENNESS_LEVELS[key as Openness] === profile.o,
   );
@@ -126,7 +196,7 @@ function VisualCard({ profile }: { profile: SharedProfile }) {
   );
 }
 
-function CopyButton({
+export function CopyButton({
   label,
   value,
   variant = "secondary",
@@ -159,7 +229,7 @@ function CopyButton({
   );
 }
 
-function DownloadCardButton({ profile }: { profile: SharedProfile }) {
+export function DownloadCardButton({ profile }: { profile: SharedProfile }) {
   const [label, setLabel] = useState("Download card");
 
   async function handleDownload() {
@@ -265,8 +335,19 @@ function SenderMode() {
   const [generated, setGenerated] = useState<SharedProfile>(() =>
     createSharedProfile(SAMPLE_PROFILE, defaultSettings),
   );
+  const [deepProfile, setDeepProfile] = useState<DeepProfile | null>(null);
+  const [deepPreferences, setDeepPreferences] =
+    useState<DeepSharePreferences>(() =>
+      createDefaultDeepSharePreferences(
+        createDefaultDeepProfile(SAMPLE_PROFILE),
+      ),
+    );
   const [shareUrl, setShareUrl] = useState("");
   const [saveState, setSaveState] = useState("Stefano profile ready");
+  const [sessionStatus, setSessionStatus] = useState("Quick Connect ready");
+  const [activeSessionKind, setActiveSessionKind] = useState<
+    "private" | "agent-readable" | null
+  >(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -290,6 +371,81 @@ function SenderMode() {
         setShareUrl(
           `${window.location.origin}/receive#${encodePayload(nextShared)}`,
         );
+        const savedDeepProfile = localStorage.getItem(DEEP_PROFILE_STORAGE_KEY);
+        if (savedDeepProfile) {
+          const nextDeepProfile = validateDeepProfile(
+            JSON.parse(savedDeepProfile),
+          );
+          const savedDeepPreferences = localStorage.getItem(
+            DEEP_SHARE_STORAGE_KEY,
+          );
+          const nextDeepPreferences = savedDeepPreferences
+            ? validateDeepSharePreferences(JSON.parse(savedDeepPreferences))
+            : createDefaultDeepSharePreferences(nextDeepProfile);
+          setDeepProfile(nextDeepProfile);
+          setDeepPreferences(nextDeepPreferences);
+
+          const storedSession = localStorage.getItem(
+            PRIVATE_SESSION_STORAGE_KEY,
+          );
+          if (
+            storedSession &&
+            nextDeepPreferences.mode === "private"
+          ) {
+            const session = JSON.parse(
+              storedSession,
+            ) as StoredPrivateSession;
+            if (
+              Number.isInteger(session.expiresAt) &&
+              session.expiresAt > Date.now()
+            ) {
+              const sessionToken = validateSessionToken(
+                session.sessionToken,
+              );
+              validateRevokeToken(session.revokeToken);
+              setShareUrl(
+                createHybridShareUrl({
+                  origin: window.location.origin,
+                  sessionToken,
+                  quickPayload: session.quickPayload,
+                  accessMode: "private",
+                  decryptionKey: session.decryptionKey,
+                }),
+              );
+              setSessionStatus("Private Deep session restored");
+              setActiveSessionKind("private");
+            }
+          }
+
+          const storedAgentSession = localStorage.getItem(
+            AGENT_SESSION_STORAGE_KEY,
+          );
+          if (
+            storedAgentSession &&
+            nextDeepPreferences.mode === "agent-readable"
+          ) {
+            const session = JSON.parse(
+              storedAgentSession,
+            ) as StoredAgentSession;
+            if (
+              Number.isInteger(session.expiresAt) &&
+              session.expiresAt > Date.now()
+            ) {
+              const sessionToken = validateSessionToken(session.sessionToken);
+              validateRevokeToken(session.revokeToken);
+              setShareUrl(
+                createHybridShareUrl({
+                  origin: window.location.origin,
+                  sessionToken,
+                  quickPayload: session.quickPayload,
+                  accessMode: "agent-readable",
+                }),
+              );
+              setSessionStatus("AI-readable session restored");
+              setActiveSessionKind("agent-readable");
+            }
+          }
+        }
         if (savedProfile) {
           localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(nextProfile));
           setSaveState("Saved on this device");
@@ -329,12 +485,158 @@ function SenderMode() {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
   }
 
-  function generateShare(scroll = true) {
+  function updateDeepPreferences(next: DeepSharePreferences) {
+    setDeepPreferences(next);
+    localStorage.setItem(DEEP_SHARE_STORAGE_KEY, JSON.stringify(next));
+  }
+
+  async function generateShare(scroll = true) {
     const nextShared = createSharedProfile(profile, settings);
+    const quickPayload = encodePayload(nextShared);
     setGenerated(nextShared);
-    setShareUrl(
-      `${window.location.origin}/receive#${encodePayload(nextShared)}`,
-    );
+    let nextShareUrl = `${window.location.origin}/receive#${quickPayload}`;
+    setSessionStatus("Preparing share…");
+
+    if (
+      deepProfile &&
+      deepPreferences.mode === "private"
+    ) {
+      try {
+        const snapshot = createDeepSnapshot(deepProfile, {
+          openness: settings.openness,
+          intent: settings.intent,
+          includedSectionIds: deepPreferences.includedSectionIds,
+          includeSocialLinks: deepPreferences.includeSocialLinks,
+          includeContactLinks: deepPreferences.includeContactLinks,
+        });
+        const encrypted = await encryptDeepSnapshot(snapshot);
+        const expiresAt = calculateDeepExpiry(deepPreferences.expiry).getTime();
+        const response = await createTemporarySession("/api/deep-sessions", {
+          envelope: encrypted.envelope,
+          expiresAt,
+        });
+        if (!response.ok) throw new Error("Deep session unavailable.");
+        const created = (await response.json()) as Record<string, unknown>;
+        const sessionToken = validateSessionToken(created.sessionToken);
+        const revokeToken = validateRevokeToken(created.revokeToken);
+        if (created.expiresAt !== expiresAt) {
+          throw new Error("Deep session expiry mismatch.");
+        }
+        nextShareUrl = createHybridShareUrl({
+          origin: window.location.origin,
+          sessionToken,
+          quickPayload,
+          accessMode: "private",
+          decryptionKey: encrypted.decryptionKey,
+        });
+
+        const previous = localStorage.getItem(PRIVATE_SESSION_STORAGE_KEY);
+        localStorage.setItem(
+          PRIVATE_SESSION_STORAGE_KEY,
+          JSON.stringify({
+            sessionToken,
+            revokeToken,
+            decryptionKey: encrypted.decryptionKey,
+            expiresAt,
+            quickPayload,
+          } satisfies StoredPrivateSession),
+        );
+        if (previous) void revokeStoredSession(previous, "deep-sessions");
+        const previousAgent = localStorage.getItem(AGENT_SESSION_STORAGE_KEY);
+        if (previousAgent) {
+          localStorage.removeItem(AGENT_SESSION_STORAGE_KEY);
+          void revokeStoredSession(previousAgent, "agent-profiles");
+        }
+        setActiveSessionKind("private");
+        setSessionStatus(
+          `Private Deep ready · expires ${new Date(expiresAt).toLocaleString()}`,
+        );
+      } catch {
+        setSessionStatus("Deep unavailable · Quick Connect fallback ready");
+      }
+    } else if (deepPreferences.mode === "agent-readable") {
+      try {
+        if (!deepPreferences.agentReadableAccepted) {
+          throw new Error("AI-readable privacy exception not accepted.");
+        }
+        if (!deepProfile) throw new Error("No Deep profile.");
+        const snapshot = createDeepSnapshot(deepProfile, {
+          openness: settings.openness,
+          intent: settings.intent,
+          includedSectionIds: deepPreferences.includedSectionIds,
+          includeSocialLinks: deepPreferences.includeSocialLinks,
+          includeContactLinks: deepPreferences.includeContactLinks,
+        });
+        const expiresAt = calculateDeepExpiry(deepPreferences.expiry).getTime();
+        const response = await createTemporarySession("/api/agent-profiles", {
+          snapshot,
+          expiresAt,
+          readableStorageAccepted: true,
+        });
+        if (!response.ok) throw new Error("AI-readable session unavailable.");
+        const created = (await response.json()) as Record<string, unknown>;
+        const sessionToken = validateSessionToken(created.sessionToken);
+        const revokeToken = validateRevokeToken(created.revokeToken);
+        if (created.expiresAt !== expiresAt) {
+          throw new Error("AI-readable session expiry mismatch.");
+        }
+        nextShareUrl = createHybridShareUrl({
+          origin: window.location.origin,
+          sessionToken,
+          quickPayload,
+          accessMode: "agent-readable",
+        });
+
+        const previous = localStorage.getItem(AGENT_SESSION_STORAGE_KEY);
+        localStorage.setItem(
+          AGENT_SESSION_STORAGE_KEY,
+          JSON.stringify({
+            sessionToken,
+            revokeToken,
+            expiresAt,
+            quickPayload,
+          } satisfies StoredAgentSession),
+        );
+        if (previous) void revokeStoredSession(previous, "agent-profiles");
+        const previousPrivate = localStorage.getItem(
+          PRIVATE_SESSION_STORAGE_KEY,
+        );
+        if (previousPrivate) {
+          localStorage.removeItem(PRIVATE_SESSION_STORAGE_KEY);
+          void revokeStoredSession(previousPrivate, "deep-sessions");
+        }
+        setActiveSessionKind("agent-readable");
+        setSessionStatus(
+          `AI-readable Deep ready · expires ${new Date(expiresAt).toLocaleString()}`,
+        );
+      } catch {
+        setSessionStatus(
+          "AI-readable Deep unavailable · Quick Connect fallback ready",
+        );
+      }
+    } else {
+      const sessions = [
+        {
+          key: PRIVATE_SESSION_STORAGE_KEY,
+          endpoint: "deep-sessions" as const,
+        },
+        {
+          key: AGENT_SESSION_STORAGE_KEY,
+          endpoint: "agent-profiles" as const,
+        },
+      ];
+      for (const session of sessions) {
+        const stored = localStorage.getItem(session.key);
+        if (stored) {
+          localStorage.removeItem(session.key);
+          void revokeStoredSession(stored, session.endpoint);
+        }
+      }
+      setActiveSessionKind(null);
+      setSessionStatus("Quick Connect ready");
+    }
+
+    setShareUrl(nextShareUrl);
     if (scroll) {
       document
         .getElementById("share-studio")
@@ -357,6 +659,22 @@ function SenderMode() {
     } else {
       await copyText(shareUrl);
     }
+  }
+
+  async function revokeDeepAccess() {
+    if (!activeSessionKind) return;
+    const storageKey =
+      activeSessionKind === "private"
+        ? PRIVATE_SESSION_STORAGE_KEY
+        : AGENT_SESSION_STORAGE_KEY;
+    const endpoint =
+      activeSessionKind === "private" ? "deep-sessions" : "agent-profiles";
+    const stored = localStorage.getItem(storageKey);
+    if (stored) await revokeStoredSession(stored, endpoint);
+    localStorage.removeItem(storageKey);
+    setActiveSessionKind(null);
+    setShareUrl(`${window.location.origin}/receive#${encodedPayload}`);
+    setSessionStatus("Deep access revoked · Quick Connect ready");
   }
 
   return (
@@ -387,7 +705,7 @@ function SenderMode() {
               <h2>Your QR and card, front and center.</h2>
             </div>
             <span className="payload-meter">
-              {shareUrl.length} characters · QR-safe
+              {shareUrl.length} characters · {sessionStatus}
             </span>
           </div>
           <div className="share-studio">
@@ -420,6 +738,15 @@ function SenderMode() {
                   Share profile
                 </button>
                 <CopyButton label="Copy link" value={shareUrl} />
+                {activeSessionKind && (
+                  <button
+                    className="button button--quiet"
+                    type="button"
+                    onClick={() => void revokeDeepAccess()}
+                  >
+                    Revoke Deep access
+                  </button>
+                )}
               </div>
             </div>
 
@@ -434,10 +761,20 @@ function SenderMode() {
             <ShareControls
               settings={settings}
               onChange={updateSettings}
-              onGenerate={() => generateShare(false)}
-              canGenerate={Boolean(profile.name.trim())}
+              onGenerate={() => void generateShare(false)}
+              canGenerate={
+                Boolean(profile.name.trim()) &&
+                (deepPreferences.mode !== "agent-readable" ||
+                  deepPreferences.agentReadableAccepted)
+              }
             />
           </div>
+          <DeepShareControls
+            profile={deepProfile}
+            quickSettings={settings}
+            preferences={deepPreferences}
+            onChange={updateDeepPreferences}
+          />
         </div>
       </section>
 
@@ -446,9 +783,23 @@ function SenderMode() {
           <ProfileSetup
             profile={profile}
             onChange={updateProfile}
-            onFinish={() => generateShare(true)}
+            onFinish={() => void generateShare(true)}
             saveState={saveState}
           />
+
+          <article className="deep-connect-invite">
+            <div>
+              <p className="step-label">OPTIONAL DEEP CONNECT</p>
+              <h2>Want someone to know the story behind the signal?</h2>
+              <p>
+                Create a separate Personal Wiki, approve it section by section,
+                and decide when a QR should unlock it.
+              </p>
+            </div>
+            <a className="button button--secondary" href="/deep/setup">
+              Create my Connection Story
+            </a>
+          </article>
 
           <div className="fallback-grid fallback-grid--compact">
             <details>
@@ -677,7 +1028,7 @@ function ReceiverMode() {
   );
 }
 
-function SiteHeader({ mode }: { mode: "sender" | "receiver" }) {
+export function SiteHeader({ mode }: { mode: "sender" | "receiver" }) {
   const [demoOpen, setDemoOpen] = useState(false);
   const closeDemo = useCallback(() => setDemoOpen(false), []);
 
@@ -711,7 +1062,7 @@ function SiteHeader({ mode }: { mode: "sender" | "receiver" }) {
   );
 }
 
-function SiteFooter() {
+export function SiteFooter() {
   return (
     <footer className="site-footer">
       <div className="shell site-footer__inner">
@@ -721,9 +1072,9 @@ function SiteFooter() {
           Conversation context, carried by you.
         </p>
         <p>
-          No accounts. No database. No analytics.
+          No accounts. No analytics. Temporary Deep sessions expire.
           <br />
-          Your signal leaves only when you share it.
+          You choose exactly what leaves your device.
         </p>
       </div>
     </footer>

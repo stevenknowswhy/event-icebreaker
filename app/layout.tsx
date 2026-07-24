@@ -25,7 +25,8 @@ export async function generateMetadata(): Promise<Metadata> {
   return {
     title: "Event Icebreaker — Skip the small talk",
     description:
-      "Share a private, selective conversation card by QR. No app, account, or database required.",
+      "Share a selective conversation card by QR, with optional encrypted Deep Connect.",
+    referrer: "no-referrer",
     icons: {
       icon: "/favicon.svg",
       shortcut: "/favicon.svg",

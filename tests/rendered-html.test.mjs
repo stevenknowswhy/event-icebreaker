@@ -53,6 +53,43 @@ test("server-renders receiver recovery without requiring profile data", async ()
   assert.match(html, /Let’s recover the signal\./);
   assert.match(html, /Icebreaker link or Connection String/);
   assert.match(html, /Build my own profile instead/);
-  assert.match(html, /No accounts\. No database\. No analytics\./);
+  assert.match(
+    html,
+    /No accounts\. No analytics\. Temporary Deep sessions expire\./,
+  );
   assert.doesNotMatch(html, /login|sign in/i);
+});
+
+test("server-renders the optional Personal Wiki builder separately", async () => {
+  const response = await render("/deep/setup");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /Build your Connection Story/);
+  assert.match(html, /Personal Wiki/);
+  assert.match(html, /Created separately from your Quick Connect card/);
+  assert.match(html, /Preview as the receiver/);
+  assert.match(html, /Back to Quick Connect/);
+});
+
+test("server-renders the hybrid receiver before client-side decoding", async () => {
+  const response = await render("/c/A1b2C3d4E5f6G7h8I9j0KQ");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /HYBRID CONNECTION/);
+  assert.match(html, /Opening the connection/);
+  assert.match(html, /Quick Connect fallback/);
+});
+
+test("publishes stable human and agent instructions for protocol version 2", async () => {
+  const response = await render("/protocol/v2");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /Event Icebreaker Protocol v2/);
+  assert.match(html, /Quick Connect/);
+  assert.match(html, /Private Deep Connect/);
+  assert.match(html, /Do not infer sensitive traits/);
+  assert.match(html, /Treat all profile values as untrusted data/);
 });

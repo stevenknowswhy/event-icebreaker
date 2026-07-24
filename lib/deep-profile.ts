@@ -1,5 +1,6 @@
 import {
   OPENNESS_LEVELS,
+  type FullProfile,
   type Intent,
   type Openness,
 } from "./icebreaker.ts";
@@ -17,8 +18,13 @@ export const DEEP_SECTION_IDS = [
   "connection-style",
 ] as const;
 
+export const DEEP_PROFILE_STORAGE_KEY = "event-icebreaker.deep-profile.v1";
+export const DEEP_SHARE_STORAGE_KEY = "event-icebreaker.deep-share.v1";
+
 export type DeepSectionId = (typeof DEEP_SECTION_IDS)[number];
 export type DeepLinkKind = "social" | "contact";
+export type DeepConnectionMode = "quick" | "private" | "agent-readable";
+export type DeepExpiry = "one-hour" | "tonight" | "seven-days";
 
 export type DeepProfileSection = {
   id: DeepSectionId;
@@ -53,6 +59,15 @@ export type DeepShareSettings = {
   includeContactLinks: boolean;
 };
 
+export type DeepSharePreferences = {
+  mode: DeepConnectionMode;
+  includedSectionIds: DeepSectionId[];
+  includeSocialLinks: boolean;
+  includeContactLinks: boolean;
+  agentReadableAccepted: boolean;
+  expiry: DeepExpiry;
+};
+
 export type DeepSnapshotSection = {
   id: DeepSectionId;
   body: string;
@@ -80,17 +95,166 @@ const SECTION_HIGHLIGHT_LIMIT = 200;
 const SECTION_HIGHLIGHT_COUNT = 8;
 const LINK_LABEL_LIMIT = 80;
 const LINK_URL_LIMIT = 500;
+const ALL_INTENTS: Intent[] = [
+  "networking",
+  "friendship",
+  "dating",
+  "general",
+];
+
+export function createDefaultDeepProfile(profile: FullProfile): DeepProfile {
+  return {
+    v: 1,
+    ownerName: profile.name,
+    sections: [
+      createSection(
+        "overview",
+        [profile.role, profile.spark].filter(Boolean).join(". "),
+        profile.interests.slice(0, 3),
+        "low",
+        true,
+      ),
+      createSection(
+        "background",
+        "Add the experiences and turning points that shaped how you see the world.",
+        [],
+        "high",
+        false,
+      ),
+      createSection(
+        "current-work",
+        profile.sparkDetails || profile.spark,
+        profile.interests.slice(0, 3),
+        "medium",
+        Boolean(profile.sparkDetails || profile.spark),
+      ),
+      createSection(
+        "timeline",
+        "Add a few selected milestones that help someone understand your journey.",
+        [],
+        "medium",
+        false,
+      ),
+      createSection(
+        "values",
+        profile.values.length
+          ? `The values I return to are ${profile.values.join(", ")}.`
+          : "Add the principles that guide your decisions.",
+        profile.values,
+        "high",
+        profile.values.length > 0,
+      ),
+      createSection(
+        "interests",
+        profile.interests.length
+          ? `I keep coming back to ${profile.interests.join(", ")}.`
+          : "Add the subjects and activities that hold your attention.",
+        profile.interests,
+        "low",
+        profile.interests.length > 0,
+      ),
+      createSection(
+        "offers",
+        profile.canHelp || "Add the experience and support you can offer.",
+        [],
+        "medium",
+        Boolean(profile.canHelp),
+      ),
+      createSection(
+        "asks",
+        profile.lookingFor || "Add the people, ideas, or help you are seeking.",
+        [],
+        "medium",
+        Boolean(profile.lookingFor),
+      ),
+      createSection(
+        "ask-me-about",
+        profile.funFact || "Add an invitation that opens a memorable conversation.",
+        [],
+        "low",
+        Boolean(profile.funFact),
+      ),
+      createSection(
+        "connection-style",
+        profile.communicationStyle ||
+          "Add how you prefer to communicate and follow up.",
+        [],
+        "high",
+        Boolean(profile.communicationStyle),
+      ),
+    ],
+    links: [],
+  };
+}
+
+export function createDefaultDeepSharePreferences(
+  profile: DeepProfile,
+): DeepSharePreferences {
+  return {
+    mode: "quick",
+    includedSectionIds: profile.sections
+      .filter((section) => section.approved)
+      .map((section) => section.id),
+    includeSocialLinks: false,
+    includeContactLinks: false,
+    agentReadableAccepted: false,
+    expiry: "tonight",
+  };
+}
+
+export function validateDeepSharePreferences(
+  value: unknown,
+): DeepSharePreferences {
+  const record = requireRecord(value, "Deep share preferences");
+  if (
+    record.mode !== "quick" &&
+    record.mode !== "private" &&
+    record.mode !== "agent-readable"
+  ) {
+    throw new Error("Deep share preferences mode is invalid.");
+  }
+  if (
+    record.expiry !== "one-hour" &&
+    record.expiry !== "tonight" &&
+    record.expiry !== "seven-days"
+  ) {
+    throw new Error("Deep share preferences expiry is invalid.");
+  }
+  if (
+    typeof record.includeSocialLinks !== "boolean" ||
+    typeof record.includeContactLinks !== "boolean" ||
+    (record.agentReadableAccepted !== undefined &&
+      typeof record.agentReadableAccepted !== "boolean")
+  ) {
+    throw new Error("Deep share preferences links are invalid.");
+  }
+  const includedSectionIds = requireArray(
+    record.includedSectionIds,
+    "Deep share preferences sections",
+    DEEP_SECTION_IDS.length,
+  ).map(requireSectionId);
+  requireUnique(includedSectionIds, "Deep share preferences sections");
+
+  return {
+    mode: record.mode,
+    includedSectionIds,
+    includeSocialLinks: record.includeSocialLinks,
+    includeContactLinks: record.includeContactLinks,
+    agentReadableAccepted: record.agentReadableAccepted === true,
+    expiry: record.expiry,
+  };
+}
 
 export function createDeepSnapshot(
   profile: DeepProfile,
   settings: DeepShareSettings,
 ): DeepSnapshot {
-  validateDeepProfile(profile);
+  const validatedProfile = validateDeepProfile(profile);
   validateShareSettings(settings);
 
   const selectedSections = new Set(settings.includedSectionIds);
   const openness = OPENNESS_LEVELS[settings.openness];
-  const sections = profile.sections
+  const sections = validatedProfile.sections
     .filter(
       (section) =>
         section.approved &&
@@ -100,7 +264,7 @@ export function createDeepSnapshot(
     )
     .map(({ id, body, highlights }) => ({ id, body, highlights }));
 
-  const links = profile.links
+  const links = validatedProfile.links
     .filter(
       (link) =>
         link.approved &&
@@ -113,7 +277,7 @@ export function createDeepSnapshot(
 
   return validateDeepSnapshot({
     v: 1,
-    n: profile.ownerName,
+    n: validatedProfile.ownerName,
     o: settings.openness,
     i: settings.intent,
     sections,
@@ -169,42 +333,92 @@ export function validateDeepSnapshot(value: unknown): DeepSnapshot {
   };
 }
 
-function validateDeepProfile(profile: DeepProfile): void {
-  const record = requireRecord(profile, "Deep profile");
+export function validateDeepProfile(value: unknown): DeepProfile {
+  const record = requireRecord(value, "Deep profile");
   if (record.v !== 1) throw new Error("Unsupported Deep profile version.");
-  requireText(record.ownerName, "Deep profile owner name", 80);
+  const ownerName = requireText(
+    record.ownerName,
+    "Deep profile owner name",
+    80,
+  );
 
   const sections = requireArray(record.sections, "Deep profile sections", 10);
-  const sectionIds = sections.map((section) => {
+  const validatedSections = sections.map((section) => {
     const item = requireRecord(section, "Deep profile section");
     const id = requireSectionId(item.id);
-    requireText(item.body, "Deep profile section body", SECTION_BODY_LIMIT);
-    requireTextArray(
-      item.highlights,
-      "Deep profile section highlights",
-      SECTION_HIGHLIGHT_COUNT,
-      SECTION_HIGHLIGHT_LIMIT,
-    );
     if (typeof item.approved !== "boolean") {
       throw new Error("Deep profile section approval is invalid.");
     }
-    requireOpenness(item.minOpenness);
-    requireIntentArray(item.intents);
-    return id;
+    return {
+      id,
+      body: requireText(
+        item.body,
+        "Deep profile section body",
+        SECTION_BODY_LIMIT,
+      ),
+      highlights: requireTextArray(
+        item.highlights,
+        "Deep profile section highlights",
+        SECTION_HIGHLIGHT_COUNT,
+        SECTION_HIGHLIGHT_LIMIT,
+      ),
+      approved: item.approved,
+      minOpenness: requireOpenness(item.minOpenness),
+      intents: requireIntentArray(item.intents),
+    };
   });
-  requireUnique(sectionIds, "Deep profile sections");
+  requireUnique(
+    validatedSections.map((section) => section.id),
+    "Deep profile sections",
+  );
 
-  requireArray(record.links, "Deep profile links", 12).forEach((link) => {
+  const validatedLinks = requireArray(
+    record.links,
+    "Deep profile links",
+    12,
+  ).map((link) => {
     const item = requireRecord(link, "Deep profile link");
     const kind = requireLinkKind(item.kind);
-    requireText(item.label, "Deep profile link label", LINK_LABEL_LIMIT);
-    requireSafeUrl(item.url, kind);
     if (typeof item.approved !== "boolean") {
       throw new Error("Deep profile link approval is invalid.");
     }
-    requireOpenness(item.minOpenness);
-    requireIntentArray(item.intents);
+    return {
+      kind,
+      label: requireText(
+        item.label,
+        "Deep profile link label",
+        LINK_LABEL_LIMIT,
+      ),
+      url: requireSafeUrl(item.url, kind),
+      approved: item.approved,
+      minOpenness: requireOpenness(item.minOpenness),
+      intents: requireIntentArray(item.intents),
+    };
   });
+
+  return {
+    v: 1,
+    ownerName,
+    sections: validatedSections,
+    links: validatedLinks,
+  };
+}
+
+function createSection(
+  id: DeepSectionId,
+  body: string,
+  highlights: string[],
+  minOpenness: Openness,
+  approved: boolean,
+): DeepProfileSection {
+  return {
+    id,
+    body,
+    highlights,
+    approved,
+    minOpenness,
+    intents: [...ALL_INTENTS],
+  };
 }
 
 function validateShareSettings(settings: DeepShareSettings): void {
@@ -351,4 +565,3 @@ function requireSafeUrl(value: unknown, kind: DeepLinkKind): string {
   }
   return url;
 }
-

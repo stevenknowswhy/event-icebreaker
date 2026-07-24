@@ -2,9 +2,9 @@
 
 ## Status
 
-Approved on July 24, 2026. Phase 1 is implemented on the
-`codex/deep-connect-phase-1` branch. Later phases remain gated by their
-checkpoints and do not authorize deployment until reviewed.
+Approved on July 24, 2026. Phases 1–8 are implemented and verified locally on
+the `codex/deep-connect-phase-1` branch. Production remains unchanged pending
+manual and real-device review.
 
 ## Objective
 
@@ -65,7 +65,7 @@ The updated product will provide:
 | Quick Connect | Immediate card, conversation starters, and AI prompt | None after the receiver page is loaded |
 | Private Deep Connect | Encrypted, expiring Personal Wiki | Required for Deep content only |
 | Agent-Readable Deep Connect | Temporary readable profile for browsing agents | Required |
-| Mutual Connect | Receiver-selected share-back and connection brief | Required only when the receiver opts in |
+| Mutual Connect | Receiver-selected local connection brief | None; receiver data stays in the current tab |
 
 ### Disclosure Controls
 
@@ -248,12 +248,13 @@ The agent instructions must say:
 npm run dev
 npm run lint
 npm test
+node tests/session-api-flow.mjs
 node tests/preview-flow.mjs
 npm run build
 ```
 
-Database migration commands will be added to the checklist only after D1 use
-is explicitly approved and the final session schema is reviewed.
+Local worker verification applies the generated Drizzle migrations before
+running the session API and browser flows.
 
 ## Expected Project Structure
 
@@ -263,20 +264,29 @@ app/
   deep/setup/page.tsx         Separate Personal Wiki builder
   protocol/v2/page.tsx        Human and agent protocol instructions
   api/deep-sessions/          Temporary session endpoints
+  api/agent-profiles/         Explicitly readable temporary profiles
 components/
   deep-profile-setup.tsx      Section editor and approval flow
   deep-profile-page.tsx       Controlled dynamic renderer
   deep-share-controls.tsx     Mode, openness, category, and expiry controls
+  hybrid-receiver.tsx         Quick-first Deep receiver
+  mutual-connect.tsx          Receiver-controlled local comparison
 lib/
   deep-profile.ts             Schema, validation, filtering, migration
   deep-crypto.ts              AES-GCM helpers
+  deep-ai.ts                  Approved AI context
+  deep-session.ts             Expiry, token, and request validation
   hybrid-url.ts               Version 2 URL creation and parsing
+  mutual-connect.ts           Local mutual disclosure and brief
 db/
-  schema.ts                   Encrypted temporary session records
+  schema.ts                   Encrypted and explicit-readable temp records
 tests/
-  deep-profile.test.ts
+  deep-connect.test.ts
   deep-crypto.test.ts
-  hybrid-flow.mjs
+  deep-session.test.ts
+  mutual-connect.test.ts
+  session-api-flow.mjs
+  preview-flow.mjs
 docs/
   DEEP_CONNECT_PLAN.md
 ```
@@ -378,18 +388,18 @@ export function createDeepSnapshot(
 
 ### Phase 2: Separate Personal Wiki creation
 
-- [ ] Add an optional Deep Connect invitation after Quick onboarding.
+- [x] Add an optional Deep Connect invitation after Quick onboarding.
   - Acceptance: Users can skip it without changing their current profile or
     share flow.
   - Verify: Browser test covers "create now" and "later."
   - Likely files: `components/profile-setup.tsx`,
     `components/icebreaker-app.tsx`.
-- [ ] Build the separate structured Personal Wiki editor.
+- [x] Build the separate structured Personal Wiki editor.
   - Acceptance: Users can edit, approve, and exclude individual sections.
   - Verify: Reloading preserves the locally stored draft and approvals.
   - Likely files: `app/deep/setup/page.tsx`,
     `components/deep-profile-setup.tsx`, `lib/deep-profile.ts`.
-- [ ] Build the dynamic Personal Wiki preview.
+- [x] Build the dynamic Personal Wiki preview.
   - Acceptance: It renders controlled components only and never raw HTML.
   - Verify: Every supported section and empty-state renders correctly.
   - Likely files: `components/deep-profile-page.tsx`,
@@ -397,19 +407,19 @@ export function createDeepSnapshot(
 
 **Checkpoint: Personal Wiki**
 
-- [ ] Quick onboarding remains optional and fast.
-- [ ] Personal Wiki can be created, reviewed, edited, and reopened.
-- [ ] No Personal Wiki data has left the device.
+- [x] Quick onboarding remains optional and fast.
+- [x] Personal Wiki can be created, reviewed, edited, and reopened.
+- [x] No Personal Wiki data has left the device.
 
 ### Phase 3: Share-specific filtering
 
-- [ ] Add Deep mode, openness, category, and expiry controls.
+- [x] Add Deep mode, openness, category, and expiry controls.
   - Acceptance: Links, contact methods, location, and personal story remain
     separate explicit switches.
   - Verify: The selected settings match the generated snapshot.
   - Likely files: `components/deep-share-controls.tsx`,
     `components/icebreaker-app.tsx`, `lib/deep-profile.ts`.
-- [ ] Add an exact disclosure preview before generation.
+- [x] Add an exact disclosure preview before generation.
   - Acceptance: The preview and encrypted snapshot contain identical fields.
   - Verify: Snapshot comparison test and manual UI check pass.
   - Likely files: `components/deep-share-controls.tsx`,
@@ -417,30 +427,30 @@ export function createDeepSnapshot(
 
 **Checkpoint: Consent**
 
-- [ ] No canonical full Deep profile is uploaded.
-- [ ] Max contains only approved, selected fields.
-- [ ] Links remain off by default.
+- [x] No canonical full Deep profile is uploaded.
+- [x] Max contains only approved, selected fields.
+- [x] Links remain off by default.
 
 ### Phase 4: Private encrypted sessions
 
-- [ ] Add and test browser AES-GCM helpers.
+- [x] Add and test browser AES-GCM helpers.
   - Acceptance: Plaintext encrypts and decrypts locally; modified ciphertext,
     IV, or key is rejected.
   - Verify: `tests/deep-crypto.test.ts`.
   - Likely files: `lib/deep-crypto.ts`, `tests/deep-crypto.test.ts`.
-- [ ] Review and enable the encrypted-session D1 schema.
+- [x] Review and enable the encrypted-session D1 schema.
   - Acceptance: Records contain only token hash, ciphertext, IV, timestamps,
     expiry, and revocation state.
   - Verify: Migration review and database integration test.
   - Likely files: `db/schema.ts`, `drizzle.config.ts`, generated migration.
-- [ ] Add bounded create, retrieve, and revoke endpoints.
+- [x] Add bounded create, retrieve, and revoke endpoints.
   - Acceptance: Size limits, expiry, token validation, and safe errors are
     enforced; no profile content is logged.
   - Verify: API integration tests cover valid, expired, revoked, oversized,
     and missing sessions.
   - Likely files: `app/api/deep-sessions/route.ts`,
     `app/api/deep-sessions/[token]/route.ts`, `db/index.ts`.
-- [ ] Generate the hybrid QR only after session creation succeeds.
+- [x] Generate the hybrid QR only after session creation succeeds.
   - Acceptance: Failure produces a working Quick-only QR and a clear notice.
   - Verify: Browser tests cover success and server failure.
   - Likely files: `components/icebreaker-app.tsx`,
@@ -448,23 +458,23 @@ export function createDeepSnapshot(
 
 **Checkpoint: Encrypted transport**
 
-- [ ] Inspect stored records and confirm no Personal Wiki phrase is present.
-- [ ] Tampered keys and ciphertext fail safely.
-- [ ] Deep service failure leaves Quick Connect usable.
+- [x] Inspect stored records and confirm no Personal Wiki phrase is present.
+- [x] Tampered keys and ciphertext fail safely.
+- [x] Deep service failure leaves Quick Connect usable.
 
 ### Phase 5: Hybrid receiver
 
-- [ ] Add the short `/c/[token]` receiver route.
+- [x] Add the short `/c/[token]` receiver route.
   - Acceptance: Quick fallback renders before the session fetch completes.
   - Verify: Throttled browser test demonstrates immediate Quick rendering.
   - Likely files: `app/c/[token]/page.tsx`,
     `components/icebreaker-app.tsx`, `lib/hybrid-url.ts`.
-- [ ] Fetch, decrypt, validate, and render Private Deep.
+- [x] Fetch, decrypt, validate, and render Private Deep.
   - Acceptance: Only validated approved sections appear.
   - Verify: Valid, expired, revoked, invalid-key, and offline cases pass.
   - Likely files: `app/c/[token]/page.tsx`,
     `components/deep-profile-page.tsx`, `lib/deep-crypto.ts`.
-- [ ] Add privacy and expiry disclosure.
+- [x] Add privacy and expiry disclosure.
   - Acceptance: Receiver sees the privacy mode, expiry, and copying limitation
     before opening Deep content.
   - Verify: Accessibility and mobile UI review pass.
@@ -472,20 +482,20 @@ export function createDeepSnapshot(
 
 **Checkpoint: End-to-end private handshake**
 
-- [ ] Sender creates Personal Wiki and filtered snapshot.
-- [ ] QR opens Quick immediately.
-- [ ] Private Deep decrypts locally.
-- [ ] Expired or unavailable Deep falls back cleanly.
-- [ ] Existing `/receive#<v1-payload>` remains functional.
+- [x] Sender creates Personal Wiki and filtered snapshot.
+- [x] QR opens Quick immediately.
+- [x] Private Deep decrypts locally.
+- [x] Expired or unavailable Deep falls back cleanly.
+- [x] Existing `/receive#<v1-payload>` remains functional.
 
 ### Phase 6: AI instructions
 
-- [ ] Publish the version 2 protocol instructions.
+- [x] Publish the version 2 protocol instructions.
   - Acceptance: Human and AI instructions explain Quick, Private Deep,
     disclosure limits, and prohibited sensitive inference.
   - Verify: Page is readable without JavaScript and has stable headings.
   - Likely files: `app/protocol/v2/page.tsx`, `app/globals.css`.
-- [ ] Add Copy approved context for AI.
+- [x] Add Copy approved context for AI.
   - Acceptance: Copied text contains only the decrypted filtered snapshot and
     protocol instructions.
   - Verify: Clipboard output snapshot test and mobile browser check.
@@ -494,55 +504,55 @@ export function createDeepSnapshot(
 
 **Checkpoint: Private AI workflow**
 
-- [ ] An AI can use copied context without accessing the private link.
-- [ ] Copied context contains no excluded fields.
+- [x] An AI can use copied context without accessing the private link.
+- [x] Copied context contains no excluded fields.
 
 ### Phase 7: Optional Agent-Readable mode
 
-- [ ] Add a separate consent screen and warning.
+- [x] Add a separate consent screen and warning.
   - Acceptance: The sender must explicitly acknowledge that anyone with the
     temporary link can read it.
   - Verify: Agent-Readable generation is impossible without acknowledgement.
-- [ ] Add temporary HTML, Markdown, and JSON representations.
+- [x] Add temporary HTML, Markdown, and JSON representations.
   - Acceptance: All formats expose the same filtered fields and expire
     together.
   - Verify: Format comparison and expiry tests pass.
-- [ ] Add revocation and visible expiry.
+- [x] Add revocation and visible expiry.
   - Acceptance: Revoked URLs stop returning profile content.
   - Verify: Browser and API tests cover revocation.
 
 **Checkpoint: Agent-readable privacy exception**
 
-- [ ] Private mode remains the default.
-- [ ] Plaintext storage/transmission is clearly labeled.
-- [ ] Excluded fields are absent from every representation.
+- [x] Private mode remains the default.
+- [x] Plaintext storage/transmission is clearly labeled.
+- [x] Excluded fields are absent from every representation.
 
 ### Phase 8: Receiver-controlled Mutual Connect
 
-- [ ] Add receiver profile source selection.
+- [x] Add receiver profile source selection.
   - Acceptance: Receiver can stay anonymous, answer three questions, or load a
     local profile.
-- [ ] Add exact receiver disclosure preview.
+- [x] Add exact receiver disclosure preview.
   - Acceptance: Nothing is sent before confirmation.
-- [ ] Generate the connection brief from mutually shared fields only.
+- [x] Generate the connection brief from mutually shared fields only.
   - Acceptance: The brief identifies common ground, complementary value,
     questions, and one next step without sensitive inference.
 
 **Checkpoint: Mutual consent**
 
-- [ ] Receiver decline leaves no shared profile.
-- [ ] Connection brief source fields are inspectable.
-- [ ] No contact exchange happens automatically.
+- [x] Receiver decline leaves no shared profile.
+- [x] Connection brief source fields are inspectable.
+- [x] No contact exchange happens automatically.
 
 ### Phase 9: Hardening and release
 
-- [ ] Run unit, integration, browser, accessibility, and build checks.
+- [x] Run unit, integration, browser, accessibility, and build checks.
 - [ ] Test QR scanning and expiry on real iPhone and Android devices.
-- [ ] Review storage, logging, secret, link, and content-injection boundaries.
-- [ ] Document the new privacy model and limitations.
+- [x] Review storage, logging, secret, link, and content-injection boundaries.
+- [x] Document the new privacy model and limitations.
 - [ ] Deploy a private preview and test the entire sender-to-receiver flow.
 - [ ] Publish only after explicit approval.
-- [ ] Preserve the previous production version as the rollback target.
+- [x] Preserve the previous production version as the rollback target.
 
 ## Success Criteria
 
@@ -585,3 +595,8 @@ The update is ready only when:
 4. D1 may be enabled for encrypted ephemeral session records.
 5. Deterministic, user-edited Personal Wiki generation ships before any
    third-party AI drafting integration.
+6. Agent-Readable mode uses a separate temporary table and requires a second
+   explicit acknowledgement before creation.
+7. Mutual Connect uses only three receiver-approved fields in the current
+   browser tab; it is not uploaded or saved.
+8. Production remains unchanged until manual and real-device review.

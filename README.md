@@ -1,22 +1,36 @@
 # Event Icebreaker
 
-Event Icebreaker is a privacy-first, mobile-first conversation card for
-in-person events. A sender creates a profile, chooses an openness level, and
-shares a normal HTTPS URL by QR. The receiver opens that URL, sees a readable
-Visual Card immediately, and can optionally copy an AI-ready prompt.
+Event Icebreaker is a privacy-first, mobile-first connection optimizer for
+in-person events. Quick Connect shares a compact conversation card immediately.
+Optional Deep Connect adds a separately edited Personal Wiki, a hybrid QR
+fallback, and receiver-controlled Mutual Connect.
 
 ## Privacy architecture
 
-- The sender's complete profile is stored only in browser `localStorage`.
-- The openness filter creates a smaller, versioned JSON payload.
-- The payload is encoded as UTF-8-safe Base64URL in the URL fragment.
-- The receiver decodes and validates the fragment locally.
-- There is no database, login, analytics, API key, or profile upload.
+- The sender's complete Quick and Deep profiles remain in browser
+  `localStorage`.
+- Openness, intent, section, social-link, and contact-link filters run before
+  anything is shared.
+- Every hybrid QR retains a compact Base64URL Quick Connect fallback.
+- Private Deep snapshots are encrypted in the browser with AES-GCM. The
+  temporary database stores only ciphertext, IV, token hashes, and expiry
+  metadata; the key remains in the URL fragment.
+- AI-readable Deep is a separate, explicit privacy exception that temporarily
+  stores only the exact filtered preview.
+- Mutual Connect uses three receiver-approved fields locally and saves or
+  uploads nothing.
+- There is no login, analytics, exposed API key, contact harvesting, or
+  persistent connection history.
 
 ## Routes
 
 - `/` — Sender Mode
 - `/receive#<payload>` — Receiver Mode
+- `/deep/setup` — separate Personal Wiki editor and preview
+- `/c/<token>#...` — hybrid Quick + Deep receiver
+- `/protocol/v2` — human and agent protocol instructions
+- `/api/deep-sessions/*` — encrypted temporary sessions
+- `/api/agent-profiles/*` — explicitly readable temporary sessions
 
 ## Local development
 
@@ -30,9 +44,14 @@ npm run dev
 ```bash
 npm run lint
 npm test
+node tests/session-api-flow.mjs
 node tests/preview-flow.mjs
 ```
 
-The preview flow exercises sender generation, QR/share URL creation, receiver
-decoding, AI-prompt copy, and manual Connection String recovery in a
-phone-sized browser.
+The browser flow exercises Quick Connect, manual recovery, Personal Wiki
+editing, Private Deep decryption, AI context copy, Mutual Connect consent,
+AI-readable output, and revocation in a phone-sized viewport. The session API
+test requires the worker-compatible local preview and migrated D1 database.
+
+Production publishing remains a deliberate manual step after real-device QR
+checks.
