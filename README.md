@@ -31,7 +31,7 @@ uncertainty, and never presents a candidate route as a guaranteed introduction.
 - browser `localStorage` for the full profile and My Circle
 - FastAPI, Pydantic, CrewAI Crew/Flow for the agent boundary
 - You.com Research for target research and You.com Search for contact scouting
-- Parasail-hosted Qwen3-32B for target, path, and draft artifacts
+- Parasail-hosted Qwen 3.5 35B A3B for target, path, and draft artifacts
 - a model-separated Parasail Llama 3.3 70B Evidence Auditor
 - optional Pica email action after explicit approval
 - Render blueprint for the Python service
@@ -69,10 +69,11 @@ uv run uvicorn app.main:app --reload --port 8000
 ```
 
 Configure `SERVICE_TOKEN`, `YOU_API_KEY`, and `PARASAIL_API_KEY`. Parasail
-Qwen3-32B powers target normalization, path construction, and intro drafting;
-a separate Parasail Llama 3.3 70B model performs the evidence audit. Pica
-remains optional and needs `PICA_SECRET`, `PICA_CONNECTION_KEY`, the Gmail send
-action ID from the account’s Pica Actions directory, and `PICA_FROM_EMAIL`.
+Qwen 3.5 35B A3B (`parasail-qwen3p5-35b-a3b`) powers target normalization,
+path construction, and intro drafting in no-thinking mode; a separate Parasail
+Llama 3.3 70B model performs the evidence audit. Pica remains optional and
+needs `PICA_SECRET`, `PICA_CONNECTION_KEY`, the Gmail send action ID from the
+account’s Pica Actions directory, and `PICA_FROM_EMAIL`.
 
 The service exposes:
 

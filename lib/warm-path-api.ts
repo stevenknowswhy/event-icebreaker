@@ -6,7 +6,9 @@ import {
 } from "./warm-path.ts";
 
 const MAX_REQUEST_BYTES = 24_000;
-const REQUEST_TIMEOUT_MS = 150_000;
+// One live run can make four sequential model calls, each bounded to 90 seconds.
+// Keep the browser proxy finite while allowing the backend's own limits to win.
+const REQUEST_TIMEOUT_MS = 360_000;
 const RATE_LIMIT = 5;
 const RATE_WINDOW_MS = 60_000;
 const rateWindows = new Map<string, { count: number; resetAt: number }>();

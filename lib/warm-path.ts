@@ -163,7 +163,7 @@ export function createWarmPathRequest(
           contact.publicProfileUrl,
           `${name} public profile`,
         ),
-        askConfirmed: true,
+        askConfirmed: true as const,
       };
     });
   const names = selected.map((contact) => contact.name.toLocaleLowerCase());

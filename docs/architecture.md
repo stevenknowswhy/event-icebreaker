@@ -11,7 +11,7 @@ flowchart LR
   Flow["FastAPI + CrewAI Flow"]
   YouR["You.com Research"]
   YouS["You.com Search"]
-  ParasailGeneral["Parasail / Qwen3-32B"]
+  ParasailGeneral["Parasail / Qwen 3.5 35B A3B"]
   ParasailAudit["Parasail / Llama 3.3 70B auditor"]
   Pica["Pica action layer"]
   Recipient["Approved recipient"]
@@ -37,7 +37,7 @@ flowchart LR
 | --- | --- | --- |
 | Browser storage → UI | Complete local profile and saved Circle | Same-origin browser storage; never bulk uploaded |
 | UI → Next.js proxy | Target URL; selected name, role, public URL; ask confirmation | Field-level disclosure; one to five contacts |
-| Proxy → agent service | Validated request plus server-only bearer token | HTTPS except local development; five requests/minute/IP; 150-second timeout; generic errors |
+| Proxy → agent service | Validated request plus server-only bearer token | HTTPS except local development; five requests/minute/IP; 360-second end-to-end timeout; generic errors |
 | Agent service → You.com | Target/contact public URLs and focused public-research query | No secrets, private graph, or arbitrary user instructions |
 | Candidate → Evidence Auditor | Existing claims, citations, and claim fingerprints | Auditor may approve, downgrade, or reject; cannot add a claim |
 | Audited result → browser | Up to three fully cited paths | Pydantic and TypeScript validation at both boundaries |
@@ -48,10 +48,10 @@ flowchart LR
 | Role | Input | Capability | Typed output |
 | --- | --- | --- | --- |
 | Circle Librarian | Selected disclosed fields | Deterministic validation and normalization only | `WarmPathRequest` |
-| Investor Researcher | Target URL + You Research result | Parasail Qwen: normalize a target footprint | `TargetArtifact` |
-| Path Scout | One contact + target + You Search result | Parasail Qwen: build ≤3-edge cited candidates | `ScoutArtifact` |
+| Investor Researcher | Target URL + You Research result | Parasail Qwen 3.5: normalize a target footprint | `TargetArtifact` |
+| Path Scout | One contact + target + You Search result | Parasail Qwen 3.5: build ≤3-edge cited candidates | `ScoutArtifact` |
 | Evidence Auditor | Candidate claims + fingerprints | Parasail Llama: approve, downgrade, reject | `AuditArtifact` |
-| Intro Strategist | Audited path only | Parasail Qwen: draft permission-first request | `IntroDraft` |
+| Intro Strategist | Audited path only | Parasail Qwen 3.5: draft permission-first request | `IntroDraft` |
 
 Contact scouting uses concurrent tasks only after target research completes.
 Deterministic ranking then applies the approved weights: 35% evidence

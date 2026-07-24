@@ -22,8 +22,8 @@ connected account, deployed environment, or provider credits.
 | Target research precedes concurrent contact scouting | Verified | mocked flow-order test |
 | Circle Librarian is a deterministic privacy gate | Verified | request contract and exact permission test |
 | You.com output is typed before later stages | Verified | `TargetArtifact` and `ScoutArtifact` contracts |
-| Parasail Qwen powers research normalization, path construction, and drafting | Ready for live proof | CrewAI OpenAI-compatible configuration and locked dependency |
-| Parasail Llama is reserved for model-separated auditing | Ready for live proof | distinct auditor LLM configuration; no other role receives it |
+| Parasail Qwen powers research normalization, path construction, and drafting | Verified live | cited Render run completed with Qwen 3.5 35B A3B in no-thinking mode |
+| Parasail Llama is reserved for model-separated auditing | Verified live | cited Render run completed with the distinct auditor configuration; no other role receives it |
 | Auditor cannot add or substitute claims | Verified | SHA-256 claim-fingerprint tests |
 | Per-run agent contribution receipt is visible | Verified | mobile browser flow renders five typed artifacts and item counts |
 | Tool permissions are least-privilege | Verified | exact permission-map test |
@@ -38,7 +38,7 @@ connected account, deployed environment, or provider credits.
 | Disconnected, circular, or wrong-terminal routes are removed | Verified | deterministic ranking tests |
 | Ambiguous identities cannot receive a strong label | Verified | confidence-threshold test and auditor downgrade test |
 | Retrieved text cannot replace instructions | Verified | all dynamic identity/research data is enclosed in untrusted JSON; agents have no code execution or delegation |
-| A real run returns only working public citations | External | execute the live-credit checklist in `docs/demo-runbook.md` |
+| A real run returns only working public citations | Verified live | Render deployment `dep-d9hvb1m7r5hc73e9hfr0`; one selected simulated-public contact, one two-edge path, two HTTPS citations, five completed roles |
 
 ## Action and delivery
 
@@ -58,13 +58,16 @@ connected account, deployed environment, or provider credits.
 - Production web build passed.
 - Four server-rendered route tests passed.
 - ESLint passed.
-- 23 Python tests passed; Ruff formatting and lint passed.
+- TypeScript `tsc --noEmit` passed.
+- 26 Python tests passed; Ruff formatting and lint passed.
 - Sender/receiver and Warm Path mobile browser flows passed at 390 × 844.
 - Browser console warnings/errors: zero.
-- Production npm audit: zero vulnerabilities. The full audit reports four
-  moderate development-only findings through `drizzle-kit`; the available fix
-  is breaking and does not affect the production dependency tree.
-- Gitleaks found no secrets in source, tests, configuration, or documentation.
+- The locked Python dependency graph resolved successfully. Registry-backed
+  vulnerability audits were not rerun during this session.
+- Gitleaks scanned all 18 commits with the repository policy and found no
+  secrets. The policy narrowly identifies synthetic Deep Connect URL tokens
+  used only in contract tests.
 
-The feature is locally complete. Production/demo sign-off still requires one
-live You.com + Parasail run and the two Opsera execution records.
+The service and live You.com + Parasail path are proven. Production/demo
+sign-off still requires the public web deployment and the two Opsera execution
+records.

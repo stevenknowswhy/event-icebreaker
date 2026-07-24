@@ -1,0 +1,12 @@
+title = "Coffee or Disco secret-scanning policy"
+
+[extend]
+useDefault = true
+
+[[allowlists]]
+description = "Synthetic Deep Connect session tokens used only in URL contract tests"
+condition = "AND"
+targetRules = ["generic-api-key"]
+regexTarget = "line"
+regexes = ['''sessionToken:\s*["'][^"']+["']''']
+paths = ['''tests/deep-connect\.test\.ts''']

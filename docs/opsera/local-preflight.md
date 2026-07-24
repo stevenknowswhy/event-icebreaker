@@ -1,7 +1,8 @@
 # Local Preflight — Not Opsera Evidence
 
 Date: 2026-07-24
-Repository base: `447807ec968c` plus the uncommitted Warm Path working tree
+Repository base: `731f6e5264412e24638930662ccc6b11c7f7da9f` plus the final
+Warm Path deployment changes
 
 This record is a local engineering preflight. It does not replace the Opsera
 execution IDs and exported reports required in `docs/opsera/README.md`.
@@ -10,21 +11,17 @@ execution IDs and exported reports required in `docs/opsera/README.md`.
 | --- | --- |
 | TypeScript `tsc --noEmit` | pass |
 | ESLint | pass |
-| Web unit tests | 27 pass |
+| Web unit tests | 29 pass |
 | vinext production build | pass; 4 pages and 2 API routes |
 | Server-render tests | 4 pass |
 | Python Ruff | pass |
-| Python pytest | 16 pass |
+| Python pytest | 26 pass |
 | Sender/receiver mobile flow | pass; 0 console issues |
 | Warm Path + approved action mobile flow | pass; 0 console issues |
-| Node production dependency audit | 0 vulnerabilities |
-| Full Node audit at high threshold | 0 high or critical; 4 moderate dev-only findings inherited through `drizzle-kit` |
-| Python dependency consistency | 141 packages compatible |
-| Common committed-secret prefix search | no matches |
+| Python locked dependency graph | resolves successfully |
+| Gitleaks full-history scan | pass; 18 commits, no secrets |
 | Whitespace/diff check | pass |
 
-The remaining four moderate Node findings are in the pre-existing
-`drizzle-kit` development-only esbuild chain. They are not included in the
-production dependency tree. A forced audit fix proposes a breaking downgrade,
-so it was not applied without a database-tooling migration. Opsera should still
-report and disposition them independently.
+Registry-backed vulnerability audits were not rerun during this session.
+Opsera must still perform and record the independent architecture and security
+work orders before special-award or production governance sign-off.

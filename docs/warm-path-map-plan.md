@@ -15,8 +15,8 @@ delivery and an optional approved action.
 - Use a Python CrewAI service because distinct research, scouting, auditing, and
   drafting roles materially improve the outcome.
 - Use deterministic code for validation, citation enforcement, and ranking.
-- Use Parasail-hosted Qwen3-32B for the generative research, scouting, and
-  drafting roles.
+- Use Parasail-hosted Qwen 3.5 35B A3B (`parasail-qwen3p5-35b-a3b`) in
+  no-thinking mode for the generative research, scouting, and drafting roles.
 - Use a separate Parasail-hosted Llama 3.3 70B model only for evidence auditing.
 - Treat Pica as an optional action layer, not a research dependency.
 - Use Opsera for architecture, security, and delivery governance.
