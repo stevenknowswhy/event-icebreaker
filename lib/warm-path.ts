@@ -42,6 +42,22 @@ export type WarmPathResult = {
     edges: WarmPathEdge[];
     introRequest: string;
   }>;
+  workflow: Array<{
+    role:
+      | "Circle Librarian"
+      | "Investor Researcher"
+      | "Path Scout"
+      | "Evidence Auditor"
+      | "Intro Strategist";
+    artifactType:
+      | "WarmPathRequest"
+      | "TargetArtifact"
+      | "ScoutArtifact"
+      | "AuditArtifact"
+      | "IntroDraft";
+    itemCount: number;
+    status: "completed";
+  }>;
 };
 
 export type WarmPathApiError = {
@@ -53,6 +69,9 @@ export type WarmPathApiError = {
 
 const URL_LIMIT = 2048;
 const TEXT_LIMIT = 800;
+const CONTROL_CHARACTERS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;
+const SINGLE_LINE_BREAKS = /[\r\n]/;
+const URL_CONTROL_CHARACTERS = /[\u0000-\u001f\u007f]/;
 
 function isRecord(value: unknown): value is Record<string, unknown> {
   return typeof value === "object" && value !== null && !Array.isArray(value);
@@ -70,6 +89,7 @@ function readText(
   if (
     typeof value !== "string" ||
     (required && !value.trim()) ||
+    URL_CONTROL_CHARACTERS.test(value) ||
     value.length > maxLength
   ) {
     throw new Error(`The ${label} is invalid.`);
@@ -78,7 +98,12 @@ function readText(
 }
 
 export function validateHttpsUrl(value: unknown, label: string): string {
-  if (typeof value !== "string" || !value.trim() || value.length > URL_LIMIT) {
+  if (
+    typeof value !== "string" ||
+    !value.trim() ||
+    CONTROL_CHARACTERS.test(value) ||
+    value.length > URL_LIMIT
+  ) {
     throw new Error(`Enter a valid ${label} HTTPS URL.`);
   }
 
@@ -106,20 +131,29 @@ export function createWarmPathRequest(
     throw new Error("Choose between one and five Circle contacts.");
   }
 
-  return {
-    targetUrl: validateHttpsUrl(targetUrl, "target"),
-    contacts: contacts.map((contact) => {
+  const normalizedTarget = validateHttpsUrl(targetUrl, "target");
+  const selected = contacts.map((contact) => {
       if (!contact.askConfirmed) {
         throw new Error(
           `Confirm that you are comfortable asking ${contact.name || "this contact"}.`,
         );
       }
       const name = contact.name.trim();
-      if (!name || name.length > 80) {
+      if (
+        !name ||
+        CONTROL_CHARACTERS.test(name) ||
+        SINGLE_LINE_BREAKS.test(name) ||
+        name.length > 80
+      ) {
         throw new Error("A selected contact name is invalid.");
       }
       const role = contact.role?.trim();
-      if (role && role.length > 120) {
+      if (
+        role &&
+        (CONTROL_CHARACTERS.test(role) ||
+          SINGLE_LINE_BREAKS.test(role) ||
+          role.length > 120)
+      ) {
         throw new Error(`The role for ${name} is too long.`);
       }
       return {
@@ -131,7 +165,20 @@ export function createWarmPathRequest(
         ),
         askConfirmed: true,
       };
-    }),
+    });
+  const names = selected.map((contact) => contact.name.toLocaleLowerCase());
+  const urls = selected.map((contact) =>
+    contact.publicProfileUrl.toLocaleLowerCase(),
+  );
+  if (new Set(names).size !== names.length || new Set(urls).size !== urls.length) {
+    throw new Error("Selected Circle contacts must have distinct identities.");
+  }
+  if (urls.includes(normalizedTarget.toLocaleLowerCase())) {
+    throw new Error("The target cannot also be a selected Circle contact.");
+  }
+  return {
+    targetUrl: normalizedTarget,
+    contacts: selected,
   };
 }
 
@@ -239,6 +286,44 @@ export function parseWarmPathResponse(value: unknown): WarmPathResult {
     }
   }
 
+  const roles = new Set([
+    "Circle Librarian",
+    "Investor Researcher",
+    "Path Scout",
+    "Evidence Auditor",
+    "Intro Strategist",
+  ]);
+  const artifactTypes = new Set([
+    "WarmPathRequest",
+    "TargetArtifact",
+    "ScoutArtifact",
+    "AuditArtifact",
+    "IntroDraft",
+  ]);
+  const workflow: WarmPathResult["workflow"] = [];
+  if (Array.isArray(value.workflow)) {
+    for (const rawStep of value.workflow.slice(0, 5)) {
+      if (
+        isRecord(rawStep) &&
+        typeof rawStep.role === "string" &&
+        roles.has(rawStep.role) &&
+        typeof rawStep.artifactType === "string" &&
+        artifactTypes.has(rawStep.artifactType) &&
+        Number.isInteger(rawStep.itemCount) &&
+        (rawStep.itemCount as number) >= 0 &&
+        rawStep.status === "completed"
+      ) {
+        workflow.push({
+          role: rawStep.role as WarmPathResult["workflow"][number]["role"],
+          artifactType:
+            rawStep.artifactType as WarmPathResult["workflow"][number]["artifactType"],
+          itemCount: rawStep.itemCount as number,
+          status: "completed",
+        });
+      }
+    }
+  }
+
   return {
     target: {
       name: target.name,
@@ -248,6 +333,7 @@ export function parseWarmPathResponse(value: unknown): WarmPathResult {
       url: target.url,
     },
     paths,
+    workflow,
   };
 }
 
@@ -328,6 +414,38 @@ export const DEMO_WARM_PATH_RESPONSE: WarmPathResult = {
       ],
       introRequest:
         "Theo — your Resilient Cities panel with Nia Roberts surfaced a possible path to Aster Ventures. I’m working on AI-assisted emergency readiness and would value your honest read first: is Nia someone you know well enough to ask about the fund, and would you be comfortable connecting us if the fit is real?",
+    },
+  ],
+  workflow: [
+    {
+      role: "Circle Librarian",
+      artifactType: "WarmPathRequest",
+      itemCount: 2,
+      status: "completed",
+    },
+    {
+      role: "Investor Researcher",
+      artifactType: "TargetArtifact",
+      itemCount: 4,
+      status: "completed",
+    },
+    {
+      role: "Path Scout",
+      artifactType: "ScoutArtifact",
+      itemCount: 3,
+      status: "completed",
+    },
+    {
+      role: "Evidence Auditor",
+      artifactType: "AuditArtifact",
+      itemCount: 3,
+      status: "completed",
+    },
+    {
+      role: "Intro Strategist",
+      artifactType: "IntroDraft",
+      itemCount: 2,
+      status: "completed",
     },
   ],
 };

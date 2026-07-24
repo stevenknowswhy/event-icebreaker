@@ -3,7 +3,7 @@ import asyncio
 from fastapi.testclient import TestClient
 
 from app.auditor import claim_fingerprint
-from app.crew import WarmPathOrchestrator
+from app.crew import AGENT_PERMISSIONS, WarmPathOrchestrator
 from app.main import app, configured_orchestrator
 from app.models import (
     AuditArtifact,
@@ -75,7 +75,20 @@ class FakeRoles:
                                     )
                                 ],
                             }
-                        )
+                        ),
+                        PublicEdge(
+                            **{
+                                "from": "Civic Futures",
+                                "relationship": "investment partner",
+                                "to": target.target.name,
+                                "citations": [
+                                    Citation(
+                                        title="Partner announcement",
+                                        url="https://evidence.example/partner",
+                                    )
+                                ],
+                            }
+                        ),
                     ],
                     evidence_completeness=0.95,
                     path_directness=0.9,
@@ -142,6 +155,10 @@ def test_flow_orders_research_before_parallel_scouting_and_audit() -> None:
 
     assert response.status_code == 200, response.text
     assert len(response.json()["paths"]) == 2
+    assert [step["role"] for step in response.json()["workflow"]] == list(
+        AGENT_PERMISSIONS
+    )
+    assert response.json()["workflow"][2]["artifactType"] == "ScoutArtifact"
     assert events.index("you:research") < events.index("agent:investor")
     first_search = next(
         index for index, value in enumerate(events) if value.startswith("you:search:")
@@ -198,3 +215,40 @@ def test_configured_service_token_is_required(monkeypatch) -> None:
 
     assert unauthorized.status_code == 401
     assert authorized.status_code == 200
+
+
+def test_production_refuses_to_run_without_service_authentication(
+    monkeypatch,
+) -> None:
+    events: list[str] = []
+    orchestrator = WarmPathOrchestrator(
+        FakeResearch(events), FakeSearch(events), FakeRoles(events)
+    )
+    monkeypatch.setenv("ENVIRONMENT", "production")
+    monkeypatch.delenv("SERVICE_TOKEN", raising=False)
+    app.dependency_overrides[configured_orchestrator] = lambda: orchestrator
+    try:
+        response = TestClient(app).post("/v1/warm-paths", json=request_payload())
+    finally:
+        app.dependency_overrides.clear()
+    assert response.status_code == 503
+    assert "authentication" in response.json()["detail"]
+
+
+def test_service_rejects_oversized_request_before_validation() -> None:
+    response = TestClient(app).post(
+        "/v1/warm-paths",
+        content=b"{" + b" " * 32_001 + b"}",
+        headers={"content-type": "application/json"},
+    )
+    assert response.status_code == 413
+
+
+def test_agent_permissions_are_exact_and_non_overlapping() -> None:
+    assert AGENT_PERMISSIONS == {
+        "Circle Librarian": ("selected request fields",),
+        "Investor Researcher": ("You.com Research output",),
+        "Path Scout": ("You.com Search output",),
+        "Evidence Auditor": ("candidate claims and cited evidence",),
+        "Intro Strategist": ("audited paths only",),
+    }

@@ -73,6 +73,8 @@ reaching an investor.
 - Pydantic for request, intermediate artifact, and response validation
 - You.com Research API for target-investor research
 - You.com Search API for focused public-edge discovery
+- AWS Bedrock with Amazon Nova Lite for target normalization, path construction,
+  and permission-first drafting
 - Parasail-hosted model for an independent evidence-auditor agent
 - Optional Pica action for an explicitly approved Gmail or CRM operation
 - Render or CrewAI AMP for service hosting; choose one before deployment
@@ -215,18 +217,21 @@ valid citation and returns an honest empty result when no complete path remains.
 ### 1. Circle Librarian
 
 - Receives only the selected, disclosed contacts.
-- Normalizes identity hints.
-- Rejects ambiguous or insufficient contact data before research.
+- Runs as a deterministic privacy gate rather than an LLM.
+- Normalizes identity hints and rejects duplicate, ambiguous, or insufficient
+  contact data before research.
 
 ### 2. Investor Researcher
 
 - Uses You.com Research to build a source-backed target footprint.
+- Uses Amazon Nova Lite through AWS Bedrock to normalize the typed result.
 - Extracts thesis, portfolio companies, accelerators, conferences, advisors,
   boards, and recent professional activity.
 
 ### 3. Path Scout
 
 - Uses focused You.com Search queries for each selected contact.
+- Uses Amazon Nova Lite through AWS Bedrock to construct candidate routes.
 - Constructs candidate paths with a maximum of three public edges.
 - Carries source identifiers with every claimed edge.
 
@@ -241,6 +246,8 @@ valid citation and returns an honest empty result when no complete path remains.
 ### 5. Intro Strategist
 
 - Receives only audited paths.
+- Uses Amazon Nova Lite through AWS Bedrock, independently of the Parasail
+  auditor.
 - Drafts one concise request to each intermediary.
 - Explicitly asks whether the intermediary is comfortable helping.
 - Never claims that the investor is interested.

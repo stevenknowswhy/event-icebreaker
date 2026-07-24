@@ -67,9 +67,11 @@ uv sync
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-Configure `SERVICE_TOKEN`, `YOU_API_KEY`, and `PARASAIL_API_KEY`. Pica remains
-optional and needs `PICA_SECRET`, `PICA_CONNECTION_KEY`, the Gmail send action
-ID from the account’s Pica Actions directory, and `PICA_FROM_EMAIL`.
+Configure `SERVICE_TOKEN`, `YOU_API_KEY`, AWS Bedrock credentials, and
+`PARASAIL_API_KEY`. Bedrock powers target normalization, path construction, and
+intro drafting; Parasail is reserved for the independent evidence audit. Pica
+remains optional and needs `PICA_SECRET`, `PICA_CONNECTION_KEY`, the Gmail send
+action ID from the account’s Pica Actions directory, and `PICA_FROM_EMAIL`.
 
 The service exposes:
 
@@ -103,4 +105,5 @@ runtime as `WARM_PATH_SERVICE_TOKEN`; set the Render URL as
 
 Before production, complete the evidence checklist in
 [docs/opsera/README.md](docs/opsera/README.md). No unexecuted scan is represented
-as completed evidence.
+as completed evidence. The requirement-by-requirement status is recorded in
+[docs/completion-audit.md](docs/completion-audit.md).

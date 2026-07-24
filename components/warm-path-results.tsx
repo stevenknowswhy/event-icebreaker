@@ -39,6 +39,7 @@ function ApprovedSendPanel({
   const [status, setStatus] = useState<
     "idle" | "sending" | "sent" | "failed"
   >("idle");
+  const subject = `Warm introduction request for ${contactName}`;
 
   async function send() {
     setStatus("sending");
@@ -48,7 +49,7 @@ function ApprovedSendPanel({
         headers: { "content-type": "application/json" },
         body: JSON.stringify({
           recipient,
-          subject: `Warm introduction request for ${contactName}`,
+          subject,
           message,
           approved,
         }),
@@ -95,6 +96,10 @@ function ApprovedSendPanel({
           }}
         />
       </div>
+      <div>
+        <span className="step-label">EXACT SUBJECT</span>
+        <input aria-label="Email subject" readOnly value={subject} />
+      </div>
       <label>
         <input
           type="checkbox"
@@ -105,8 +110,8 @@ function ApprovedSendPanel({
           }}
         />
         <span>
-          I reviewed the recipient and the exact message above. Send this email
-          now.
+          I reviewed the recipient, subject, and exact message above. Send this
+          email now.
         </span>
       </label>
       <button
@@ -240,6 +245,29 @@ export function WarmPathResults({
                 </div>
               </article>
             ))}
+          </div>
+        )}
+
+        {result.workflow.length > 0 && (
+          <div className="workflow-receipt" aria-label="Agent artifact receipt">
+            <div>
+              <p className="step-label">INSPECTABLE RUN RECEIPT</p>
+              <h3>Five bounded jobs produced typed artifacts.</h3>
+            </div>
+            <ol>
+              {result.workflow.map((step) => (
+                <li key={step.role}>
+                  <span aria-hidden="true">✓</span>
+                  <div>
+                    <strong>{step.role}</strong>
+                    <small>
+                      {step.artifactType} · {step.itemCount} item
+                      {step.itemCount === 1 ? "" : "s"}
+                    </small>
+                  </div>
+                </li>
+              ))}
+            </ol>
           </div>
         )}
       </div>

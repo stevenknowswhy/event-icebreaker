@@ -76,6 +76,38 @@ try {
               "Maya — would you be comfortable helping me understand whether an introduction would be appropriate?",
           },
         ],
+        workflow: [
+          {
+            role: "Circle Librarian",
+            artifactType: "WarmPathRequest",
+            itemCount: 1,
+            status: "completed",
+          },
+          {
+            role: "Investor Researcher",
+            artifactType: "TargetArtifact",
+            itemCount: 2,
+            status: "completed",
+          },
+          {
+            role: "Path Scout",
+            artifactType: "ScoutArtifact",
+            itemCount: 1,
+            status: "completed",
+          },
+          {
+            role: "Evidence Auditor",
+            artifactType: "AuditArtifact",
+            itemCount: 1,
+            status: "completed",
+          },
+          {
+            role: "Intro Strategist",
+            artifactType: "IntroDraft",
+            itemCount: 1,
+            status: "completed",
+          },
+        ],
       }),
     });
   });
@@ -121,9 +153,13 @@ try {
     .click();
   const send = page.getByRole("button", { name: "Send approved email" });
   await page.getByLabel("Maya Chen email address").fill("maya@example.com");
+  assert.equal(
+    await page.getByLabel("Email subject").inputValue(),
+    "Warm introduction request for Maya Chen",
+  );
   assert.equal(await send.isDisabled(), true);
   await page
-    .getByLabel(/I reviewed the recipient and the exact message above/)
+    .getByLabel(/I reviewed the recipient, subject, and exact message above/)
     .check();
   assert.equal(await send.isEnabled(), true);
   await mkdir("artifacts", { recursive: true });
@@ -140,6 +176,7 @@ try {
       "Maya — would you be comfortable helping me understand whether an introduction would be appropriate?",
     approved: true,
   });
+  assert.equal(await page.locator(".workflow-receipt li").count(), 5);
 
   await page.getByRole("button", { name: "Load a cited demo" }).click();
   await page.getByRole("heading", { name: "2 human paths to Elena Park." }).waitFor();

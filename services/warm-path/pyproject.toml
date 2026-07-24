@@ -4,7 +4,7 @@ version = "0.1.0"
 description = "Typed multi-agent research service for Warm Path Map"
 requires-python = ">=3.11,<3.14"
 dependencies = [
-  "crewai>=1.0.0",
+  "crewai[bedrock]>=1.0.0",
   "fastapi>=0.115.0",
   "httpx>=0.28.0",
   "pydantic>=2.10.0",

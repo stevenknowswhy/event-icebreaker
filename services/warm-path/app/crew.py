@@ -20,6 +20,7 @@ from app.models import (
     WarmPathContact,
     WarmPathRequest,
     WarmPathResponse,
+    WorkflowStep,
 )
 from app.ranking import rank_paths
 from app.tools.you_research import YouResearchClient
@@ -66,14 +67,27 @@ def _untrusted(value: object) -> str:
 class CrewAIRoleExecutor:
     """Runs bounded, typed CrewAI tasks after retrieval has already completed."""
 
-    def __init__(self, api_key: str, model: str, auditor_model: str) -> None:
-        base_url = "https://api.parasail.io/v1"
-        self._general_llm = LLM(model=model, api_key=api_key, base_url=base_url)
+    def __init__(
+        self,
+        auditor_api_key: str,
+        bedrock_model: str,
+        bedrock_region: str,
+        auditor_model: str,
+    ) -> None:
+        self._general_llm = LLM(
+            model=bedrock_model,
+            region_name=bedrock_region,
+            temperature=0,
+            timeout=45,
+            max_tokens=4_000,
+        )
         self._auditor_llm = LLM(
             model=auditor_model,
-            api_key=api_key,
-            base_url=base_url,
+            api_key=auditor_api_key,
+            base_url="https://api.parasail.io/v1",
             temperature=0,
+            timeout=45,
+            max_tokens=4_000,
         )
 
     def roster(self) -> dict[str, Agent]:
@@ -84,13 +98,6 @@ class CrewAIRoleExecutor:
             "verbose": False,
         }
         return {
-            "Circle Librarian": Agent(
-                role="Circle Librarian",
-                goal="Accept only the explicitly selected contact identity hints.",
-                backstory="A privacy-first records librarian.",
-                llm=self._general_llm,
-                **shared,
-            ),
             "Investor Researcher": Agent(
                 role="Investor Researcher",
                 goal=(
@@ -157,8 +164,11 @@ class CrewAIRoleExecutor:
         return await self._run(
             "Investor Researcher",
             (
-                f"Normalize the public target at {target_url}. Preserve source URLs. "
-                "Return only the requested schema.\n" + _untrusted(research_output)
+                "Normalize the public target in the untrusted evidence. Preserve "
+                "source URLs. Return only the requested schema.\n"
+                + _untrusted(
+                    {"targetUrl": target_url, "researchOutput": research_output}
+                )
             ),
             TargetArtifact,
         )
@@ -172,11 +182,18 @@ class CrewAIRoleExecutor:
         return await self._run(
             "Path Scout",
             (
-                f"Scout public paths of at most three edges from {contact.name} "
-                f"({contact.public_profile_url}) to {target.target.name} "
-                f"({target.target.url}). Every edge needs a source URL. Do not infer "
-                "friendship, endorsement, or willingness. Return only the schema.\n"
-                + _untrusted(search_output)
+                "Scout public paths of at most three edges between the disclosed "
+                "contact and target in the untrusted evidence. Adjacent edge labels "
+                "must match exactly. The final node must be the target name or "
+                "organization. Every edge needs a source URL. Do not infer friendship, "
+                "endorsement, or willingness. Return only the schema.\n"
+                + _untrusted(
+                    {
+                        "contact": contact.model_dump(by_alias=True, mode="json"),
+                        "target": target.target.model_dump(by_alias=True, mode="json"),
+                        "searchOutput": search_output,
+                    }
+                )
             ),
             ScoutArtifact,
         )
@@ -245,8 +262,9 @@ class WarmPathOrchestrator:
         self, contacts: Sequence[WarmPathContact], target: TargetArtifact
     ) -> list[ScoutArtifact]:
         async def scout_one(contact: WarmPathContact) -> ScoutArtifact:
+            name = " ".join(contact.name.replace('"', " ").replace("'", " ").split())
             raw = await self.search_client.search(
-                f'"{contact.name}" {contact.public_profile_url} '
+                f'"{name}" {contact.public_profile_url} '
                 f'"{target.target.name}" {target.target.url} '
                 "portfolio accelerator conference advisor board"
             )
@@ -326,7 +344,34 @@ class WarmPathResearchFlow(Flow[WarmPathFlowState]):
         drafted = await self._orchestrator.draft(audited, self.state.target)
         response = WarmPathResponse(
             target=self.state.target.target,
-            paths=rank_paths(drafted),
+            paths=rank_paths(drafted, self.state.target.target),
+            workflow=[
+                WorkflowStep(
+                    role="Circle Librarian",
+                    artifact_type="WarmPathRequest",
+                    item_count=len(self.state.request.contacts),
+                ),
+                WorkflowStep(
+                    role="Investor Researcher",
+                    artifact_type="TargetArtifact",
+                    item_count=len(self.state.target.sources),
+                ),
+                WorkflowStep(
+                    role="Path Scout",
+                    artifact_type="ScoutArtifact",
+                    item_count=sum(len(scout.paths) for scout in self.state.scouts),
+                ),
+                WorkflowStep(
+                    role="Evidence Auditor",
+                    artifact_type="AuditArtifact",
+                    item_count=len(self.state.audit.decisions),
+                ),
+                WorkflowStep(
+                    role="Intro Strategist",
+                    artifact_type="IntroDraft",
+                    item_count=len(drafted),
+                ),
+            ],
         )
         self.state.response = response
         self.state.artifacts = FlowArtifacts(

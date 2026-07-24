@@ -1552,13 +1552,18 @@ summary {
   gap: 7px;
 }
 
-.pica-approval input[type="email"] {
+.pica-approval input[type="email"],
+.pica-approval input[readonly] {
   background: rgba(255, 255, 255, 0.08);
   border: 1px solid rgba(255, 255, 255, 0.2);
   border-radius: 9px;
   color: #fff;
   min-height: 44px;
   padding: 10px 12px;
+}
+
+.pica-approval input[readonly] {
+  color: rgba(255, 255, 255, 0.7);
 }
 
 .pica-approval > label {
@@ -1606,6 +1611,60 @@ summary {
   max-width: 560px;
 }
 
+.workflow-receipt {
+  align-items: start;
+  background: var(--ink);
+  border-radius: 18px;
+  color: #fff;
+  display: grid;
+  gap: 24px;
+  grid-template-columns: minmax(180px, 0.8fr) minmax(300px, 1.5fr);
+  margin-top: 24px;
+  padding: 24px;
+}
+
+.workflow-receipt .step-label {
+  color: var(--electric);
+}
+
+.workflow-receipt h3 {
+  font-size: 24px;
+  letter-spacing: -0.035em;
+  margin: 7px 0 0;
+}
+
+.workflow-receipt ol {
+  display: grid;
+  gap: 8px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.workflow-receipt li {
+  align-items: center;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  display: flex;
+  gap: 10px;
+  padding-bottom: 8px;
+}
+
+.workflow-receipt li > span {
+  color: var(--electric);
+}
+
+.workflow-receipt li div {
+  display: grid;
+  gap: 2px;
+}
+
+.workflow-receipt small {
+  color: rgba(255, 255, 255, 0.52);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  text-transform: uppercase;
+}
+
 @media (max-width: 900px) {
   .hero,
   .receiver-hero {
@@ -1640,6 +1699,10 @@ summary {
 
   .agent-rail {
     position: static;
+  }
+
+  .workflow-receipt {
+    grid-template-columns: 1fr;
   }
 }
 

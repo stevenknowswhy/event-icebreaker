@@ -35,12 +35,15 @@ Start research. Point to the five roles:
 
 - You.com Research builds the target footprint.
 - scouts search selected contacts concurrently.
+- Amazon Nova Lite on AWS Bedrock turns those public results into bounded typed
+  target, path, and draft artifacts.
 - a separate Parasail-hosted auditor can only approve, downgrade, or reject.
 - deterministic code—not an LLM—requires citations and chooses the top three.
 - the Intro Strategist sees only audited paths.
 
-Open one citation and read “What we cannot claim.” Say: “This is a candidate
-path worth asking about, not a guaranteed introduction.”
+Point to the typed-artifact receipt, then open one citation and read “What we
+cannot claim.” Say: “This is a candidate path worth asking about, not a
+guaranteed introduction.”
 
 ### 1:20–1:40 — Human-approved action
 

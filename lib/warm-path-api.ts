@@ -6,23 +6,59 @@ import {
 } from "./warm-path.ts";
 
 const MAX_REQUEST_BYTES = 24_000;
-const REQUEST_TIMEOUT_MS = 50_000;
+const REQUEST_TIMEOUT_MS = 150_000;
+const RATE_LIMIT = 5;
+const RATE_WINDOW_MS = 60_000;
+const rateWindows = new Map<string, { count: number; resetAt: number }>();
 
 type ProxyOptions = {
   serviceUrl?: string;
   serviceToken?: string;
   fetcher?: typeof fetch;
+  rateLimiter?: (request: Request) => number | null;
 };
 
-function jsonResponse(body: unknown, status: number) {
+function jsonResponse(
+  body: unknown,
+  status: number,
+  extraHeaders: HeadersInit = {},
+) {
   return Response.json(body, {
     status,
-    headers: { "cache-control": "no-store" },
+    headers: { "cache-control": "no-store", ...extraHeaders },
   });
 }
 
-function errorResponse(code: string, message: string, status: number) {
-  return jsonResponse({ error: { code, message } }, status);
+function errorResponse(
+  code: string,
+  message: string,
+  status: number,
+  extraHeaders: HeadersInit = {},
+) {
+  return jsonResponse({ error: { code, message } }, status, extraHeaders);
+}
+
+function requestIdentity(request: Request): string {
+  return (
+    request.headers.get("cf-connecting-ip") ??
+    request.headers.get("x-forwarded-for")?.split(",")[0]?.trim() ??
+    "anonymous"
+  );
+}
+
+export function rateLimitWarmPathRequest(request: Request): number | null {
+  const now = Date.now();
+  const identity = requestIdentity(request);
+  const current = rateWindows.get(identity);
+  if (!current || current.resetAt <= now) {
+    rateWindows.set(identity, { count: 1, resetAt: now + RATE_WINDOW_MS });
+    return null;
+  }
+  if (current.count >= RATE_LIMIT) {
+    return Math.max(1, Math.ceil((current.resetAt - now) / 1_000));
+  }
+  current.count += 1;
+  return null;
 }
 
 function serviceEndpoint(serviceUrl: string, path: string): string {
@@ -81,6 +117,15 @@ export async function proxyWarmPathRequest(
   request: Request,
   options: ProxyOptions = {},
 ): Promise<Response> {
+  const retryAfter = (options.rateLimiter ?? rateLimitWarmPathRequest)(request);
+  if (retryAfter !== null) {
+    return errorResponse(
+      "RATE_LIMITED",
+      "Research is busy right now. Wait a moment and try again.",
+      429,
+      { "retry-after": String(retryAfter) },
+    );
+  }
   const serviceUrl = options.serviceUrl ?? process.env.WARM_PATH_SERVICE_URL;
   if (!serviceUrl) {
     return errorResponse(

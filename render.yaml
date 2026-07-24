@@ -12,12 +12,24 @@ services:
         value: 3.12.11
       - key: SERVICE_TOKEN
         generateValue: true
+      - key: ENVIRONMENT
+        value: production
+      - key: CREWAI_DISABLE_TELEMETRY
+        value: true
       - key: YOU_API_KEY
         sync: false
+      - key: AWS_ACCESS_KEY_ID
+        sync: false
+      - key: AWS_SECRET_ACCESS_KEY
+        sync: false
+      - key: AWS_SESSION_TOKEN
+        sync: false
+      - key: AWS_DEFAULT_REGION
+        value: us-east-1
+      - key: BEDROCK_MODEL
+        value: bedrock/amazon.nova-lite-v1:0
       - key: PARASAIL_API_KEY
         sync: false
-      - key: PARASAIL_MODEL
-        value: parasail-qwen3-32b
       - key: PARASAIL_AUDITOR_MODEL
         value: parasail-deepseek-31
       - key: PICA_SECRET

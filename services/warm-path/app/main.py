@@ -1,11 +1,13 @@
 from __future__ import annotations
 
 import os
+import re
 import secrets
 from typing import Annotated
 
 import httpx
-from fastapi import Depends, FastAPI, Header, HTTPException
+from fastapi import Depends, FastAPI, Header, HTTPException, Request
+from fastapi.responses import JSONResponse
 
 from app.crew import (
     AGENT_PERMISSIONS,
@@ -30,6 +32,25 @@ app = FastAPI(
     redoc_url=None,
 )
 
+MAX_REQUEST_BYTES = 32_000
+
+
+@app.middleware("http")
+async def limit_request_size(request: Request, call_next):
+    if request.method == "POST":
+        content_length = request.headers.get("content-length")
+        if content_length and content_length.isdigit():
+            if int(content_length) > MAX_REQUEST_BYTES:
+                return JSONResponse(
+                    {"detail": "Request body is too large."}, status_code=413
+                )
+        body = await request.body()
+        if len(body) > MAX_REQUEST_BYTES:
+            return JSONResponse(
+                {"detail": "Request body is too large."}, status_code=413
+            )
+    return await call_next(request)
+
 
 def configured_orchestrator() -> WarmPathOrchestrator:
     you_key = os.getenv("YOU_API_KEY")
@@ -40,8 +61,9 @@ def configured_orchestrator() -> WarmPathOrchestrator:
             detail="Live Warm Path research is not configured.",
         )
     roles = CrewAIRoleExecutor(
-        api_key=parasail_key,
-        model=os.getenv("PARASAIL_MODEL", "parasail-qwen3-32b"),
+        auditor_api_key=parasail_key,
+        bedrock_model=os.getenv("BEDROCK_MODEL", "bedrock/amazon.nova-lite-v1:0"),
+        bedrock_region=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
         auditor_model=os.getenv("PARASAIL_AUDITOR_MODEL", "parasail-deepseek-31"),
     )
     return WarmPathOrchestrator(
@@ -61,6 +83,11 @@ def configured_pica() -> PicaActionClient:
             status_code=503,
             detail="Approved email actions are not configured.",
         )
+    if not re.fullmatch(r"[^@\s]+@[^@\s]+\.[^@\s]+", from_email):
+        raise HTTPException(
+            status_code=503,
+            detail="Approved email actions are not configured.",
+        )
     return PicaActionClient(
         secret,
         connection_key,
@@ -74,6 +101,10 @@ def require_service_token(
 ) -> None:
     expected = os.getenv("SERVICE_TOKEN")
     if not expected:
+        if os.getenv("ENVIRONMENT") == "production":
+            raise HTTPException(
+                status_code=503, detail="Service authentication missing."
+            )
         return
     supplied = (
         authorization.removeprefix("Bearer ")

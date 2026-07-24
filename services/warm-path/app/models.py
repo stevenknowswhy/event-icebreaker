@@ -11,6 +11,7 @@ from pydantic import (
     Field,
     StringConstraints,
     field_validator,
+    model_validator,
 )
 
 ShortText = Annotated[str, StringConstraints(strip_whitespace=True, min_length=1)]
@@ -28,6 +29,8 @@ class ContractModel(BaseModel):
 
 
 def safe_https_url(value: str) -> str:
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError("URL cannot contain control characters")
     if len(value) > 2048:
         raise ValueError("URL exceeds 2,048 characters")
     parsed = urlsplit(value)
@@ -38,11 +41,22 @@ def safe_https_url(value: str) -> str:
     return value
 
 
+def safe_single_line(value: str, label: str) -> str:
+    if any(ord(character) < 32 or ord(character) == 127 for character in value):
+        raise ValueError(f"{label} cannot contain control characters")
+    return value
+
+
 class WarmPathContact(ContractModel):
     name: ShortText = Field(max_length=80)
     role: str | None = Field(default=None, max_length=120)
     public_profile_url: str
     ask_confirmed: Literal[True]
+
+    @field_validator("name")
+    @classmethod
+    def validate_name(cls, value: str) -> str:
+        return safe_single_line(value, "name")
 
     @field_validator("role")
     @classmethod
@@ -50,7 +64,7 @@ class WarmPathContact(ContractModel):
         if value is None:
             return None
         normalized = value.strip()
-        return normalized or None
+        return safe_single_line(normalized, "role") if normalized else None
 
     @field_validator("public_profile_url")
     @classmethod
@@ -67,6 +81,16 @@ class WarmPathRequest(ContractModel):
     def validate_target_url(cls, value: str) -> str:
         return safe_https_url(value)
 
+    @model_validator(mode="after")
+    def reject_identity_collisions(self) -> WarmPathRequest:
+        names = [contact.name.casefold() for contact in self.contacts]
+        urls = [contact.public_profile_url.casefold() for contact in self.contacts]
+        if len(names) != len(set(names)) or len(urls) != len(set(urls)):
+            raise ValueError("selected contacts must have distinct identities")
+        if self.target_url.casefold() in set(urls):
+            raise ValueError("the target cannot also be a selected contact")
+        return self
+
 
 class Citation(ContractModel):
     title: ShortText = Field(max_length=240)
@@ -78,11 +102,25 @@ class Citation(ContractModel):
     def validate_citation_url(cls, value: str) -> str:
         return safe_https_url(value)
 
+    @field_validator("title")
+    @classmethod
+    def validate_title(cls, value: str) -> str:
+        return safe_single_line(value, "citation title")
 
-class PublicEdge(ContractModel):
+
+class CandidateEdge(ContractModel):
     from_: ShortText = Field(alias="from", max_length=160)
     relationship: ShortText = Field(max_length=240)
     to: ShortText = Field(max_length=160)
+    citations: list[Citation] = Field(default_factory=list, max_length=5)
+
+    @field_validator("from_", "relationship", "to")
+    @classmethod
+    def validate_edge_text(cls, value: str) -> str:
+        return safe_single_line(value, "edge text")
+
+
+class PublicEdge(CandidateEdge):
     citations: list[Citation] = Field(min_length=1, max_length=5)
 
 
@@ -90,7 +128,7 @@ class CandidatePath(ContractModel):
     contact_name: ShortText = Field(max_length=80)
     explanation: ShortText = Field(max_length=800)
     uncertainty: ShortText = Field(max_length=500)
-    edges: list[PublicEdge] = Field(min_length=1, max_length=3)
+    edges: list[CandidateEdge] = Field(min_length=1, max_length=3)
     intro_request: str = Field(default="", max_length=1200)
     evidence_completeness: float = Field(default=0.0, ge=0, le=1)
     path_directness: float = Field(default=0.0, ge=0, le=1)
@@ -109,6 +147,11 @@ class TargetSummary(ContractModel):
     def validate_url(cls, value: str) -> str:
         return safe_https_url(value)
 
+    @field_validator("name", "organization")
+    @classmethod
+    def validate_identity_text(cls, value: str | None) -> str | None:
+        return safe_single_line(value, "target identity") if value else value
+
 
 class RankedPath(ContractModel):
     contact_name: ShortText = Field(max_length=80)
@@ -119,9 +162,29 @@ class RankedPath(ContractModel):
     intro_request: ShortText = Field(max_length=1200)
 
 
+class WorkflowStep(ContractModel):
+    role: Literal[
+        "Circle Librarian",
+        "Investor Researcher",
+        "Path Scout",
+        "Evidence Auditor",
+        "Intro Strategist",
+    ]
+    artifact_type: Literal[
+        "WarmPathRequest",
+        "TargetArtifact",
+        "ScoutArtifact",
+        "AuditArtifact",
+        "IntroDraft",
+    ]
+    item_count: int = Field(ge=0)
+    status: Literal["completed"] = "completed"
+
+
 class WarmPathResponse(ContractModel):
     target: TargetSummary
     paths: list[RankedPath] = Field(max_length=3)
+    workflow: list[WorkflowStep] = Field(default_factory=list, max_length=5)
 
 
 class TargetArtifact(ContractModel):

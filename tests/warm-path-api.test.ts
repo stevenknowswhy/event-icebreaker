@@ -71,6 +71,21 @@ test("server boundary reports configuration and validation states", async () => 
   assert.equal(invalid.status, 400);
 });
 
+test("server boundary rate limits expensive research before provider calls", async () => {
+  let called = false;
+  const response = await proxyWarmPathRequest(post(requestPayload), {
+    serviceUrl: "https://agents.example",
+    rateLimiter: () => 42,
+    fetcher: async () => {
+      called = true;
+      return Response.json(DEMO_WARM_PATH_RESPONSE);
+    },
+  });
+  assert.equal(response.status, 429);
+  assert.equal(response.headers.get("retry-after"), "42");
+  assert.equal(called, false);
+});
+
 test("approved email boundary refuses actions without confirmation", async () => {
   const response = await proxyApprovedEmail(
     post({
@@ -99,4 +114,22 @@ test("approved email boundary returns only a safe receipt", async () => {
     },
   );
   assert.deepEqual(await response.json(), { status: "sent" });
+});
+
+test("approved email boundary maps provider failure without leaking details", async () => {
+  const response = await proxyApprovedEmail(
+    post({
+      recipient: "maya@example.com",
+      subject: "Introduction",
+      message: "Would you be comfortable helping?",
+      approved: true,
+    }),
+    {
+      serviceUrl: "https://agents.example",
+      fetcher: async () =>
+        new Response("PICA_SECRET=leaked traceback", { status: 500 }),
+    },
+  );
+  assert.equal(response.status, 502);
+  assert.doesNotMatch(await response.text(), /PICA_SECRET|traceback|leaked/);
 });

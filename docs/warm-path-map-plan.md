@@ -15,6 +15,7 @@ delivery and an optional approved action.
 - Use a Python CrewAI service because distinct research, scouting, auditing, and
   drafting roles materially improve the outcome.
 - Use deterministic code for validation, citation enforcement, and ranking.
+- Use AWS Bedrock for the generative research, scouting, and drafting roles.
 - Use an independent Parasail-hosted model only for evidence auditing.
 - Treat Pica as an optional action layer, not a research dependency.
 - Use Opsera for architecture, security, and delivery governance.
@@ -192,7 +193,8 @@ delivery and an optional approved action.
 
 ### Checkpoint: Multi-Agent
 
-- Agent contributions are inspectable as typed intermediate artifacts.
+- Agent contributions are inspectable as a safe per-run receipt of typed
+  intermediate artifacts and item counts.
 - One live run produces only citation-backed public edges.
 - Failure never falls back to fabricated results.
 

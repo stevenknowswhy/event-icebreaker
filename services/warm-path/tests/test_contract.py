@@ -61,3 +61,31 @@ def test_cross_service_fixture_matches_pydantic_contract() -> None:
         assert error.errors()[0]["loc"][-1] == "citations"
     else:
         raise AssertionError("uncited fixture should fail")
+
+
+def test_contract_rejects_control_characters_and_identity_collisions() -> None:
+    base_contact = {
+        "name": "Maya Chen",
+        "publicProfileUrl": "https://people.example/maya",
+        "askConfirmed": True,
+    }
+    invalid_payloads = [
+        {
+            "targetUrl": "https://fund.example/investor\n",
+            "contacts": [base_contact],
+        },
+        {
+            "targetUrl": "https://fund.example/investor",
+            "contacts": [base_contact, base_contact],
+        },
+        {
+            "targetUrl": "https://people.example/maya",
+            "contacts": [base_contact],
+        },
+    ]
+    for payload in invalid_payloads:
+        try:
+            WarmPathRequest.model_validate(payload)
+        except ValidationError:
+            continue
+        raise AssertionError(f"unsafe identity payload should fail: {payload}")
