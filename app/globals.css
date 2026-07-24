@@ -1339,6 +1339,10 @@ summary {
   overflow: auto;
 }
 
+.deep-disclosure-preview .personal-wiki__sections section > p:not(.step-label) {
+  color: #181a1e;
+}
+
 .deep-builder {
   background: #0b0c0f;
   color: #fff;
@@ -1772,6 +1776,10 @@ summary {
 .deep-receiver-section .personal-wiki {
   margin: 0 auto;
   max-width: 920px;
+}
+
+.deep-receiver-section .mutual-connect {
+  color: var(--ink);
 }
 
 .deep-receiver-actions {

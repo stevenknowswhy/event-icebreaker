@@ -1,6 +1,6 @@
 import assert from "node:assert/strict";
 
-const origin = process.env.PREVIEW_ORIGIN ?? "http://127.0.0.1:3000";
+const origin = process.env.PREVIEW_ORIGIN ?? "http://localhost:3000";
 const expiresAt = Date.now() + 60 * 60 * 1_000;
 
 async function fetchWithServiceRetry(url, init) {
