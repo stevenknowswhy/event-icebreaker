@@ -69,21 +69,21 @@ class CrewAIRoleExecutor:
 
     def __init__(
         self,
-        auditor_api_key: str,
-        bedrock_model: str,
-        bedrock_region: str,
+        parasail_api_key: str,
+        general_model: str,
         auditor_model: str,
     ) -> None:
         self._general_llm = LLM(
-            model=bedrock_model,
-            region_name=bedrock_region,
+            model=general_model,
+            api_key=parasail_api_key,
+            base_url="https://api.parasail.io/v1",
             temperature=0,
             timeout=45,
             max_tokens=4_000,
         )
         self._auditor_llm = LLM(
             model=auditor_model,
-            api_key=auditor_api_key,
+            api_key=parasail_api_key,
             base_url="https://api.parasail.io/v1",
             temperature=0,
             timeout=45,

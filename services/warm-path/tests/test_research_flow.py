@@ -196,6 +196,33 @@ def test_missing_configuration_is_safe_and_generic(monkeypatch) -> None:
     assert "configured" in response.json()["detail"]
 
 
+def test_live_service_configuration_does_not_require_aws(
+    monkeypatch,
+) -> None:
+    captured: dict[str, str] = {}
+
+    def fake_roles(**kwargs):
+        captured.update(kwargs)
+        return FakeRoles([])
+
+    monkeypatch.setenv("YOU_API_KEY", "you-key")
+    monkeypatch.setenv("PARASAIL_API_KEY", "parasail-key")
+    monkeypatch.delenv("AWS_ACCESS_KEY_ID", raising=False)
+    monkeypatch.delenv("AWS_SECRET_ACCESS_KEY", raising=False)
+    monkeypatch.delenv("AWS_SESSION_TOKEN", raising=False)
+    monkeypatch.delenv("AWS_DEFAULT_REGION", raising=False)
+    monkeypatch.delenv("BEDROCK_MODEL", raising=False)
+    monkeypatch.setattr("app.main.CrewAIRoleExecutor", fake_roles)
+
+    configured_orchestrator()
+
+    assert captured == {
+        "parasail_api_key": "parasail-key",
+        "general_model": "parasail-qwen3-32b",
+        "auditor_model": "parasail-llama-33-70b-fp8",
+    }
+
+
 def test_configured_service_token_is_required(monkeypatch) -> None:
     events: list[str] = []
     orchestrator = WarmPathOrchestrator(

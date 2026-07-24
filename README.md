@@ -31,7 +31,8 @@ uncertainty, and never presents a candidate route as a guaranteed introduction.
 - browser `localStorage` for the full profile and My Circle
 - FastAPI, Pydantic, CrewAI Crew/Flow for the agent boundary
 - You.com Research for target research and You.com Search for contact scouting
-- a Parasail-hosted independent Evidence Auditor
+- Parasail-hosted Qwen3-32B for target, path, and draft artifacts
+- a model-separated Parasail Llama 3.3 70B Evidence Auditor
 - optional Pica email action after explicit approval
 - Render blueprint for the Python service
 - Opsera Architecture Analyzer and Security Scanner as pre-deployment gates
@@ -67,9 +68,9 @@ uv sync
 uv run uvicorn app.main:app --reload --port 8000
 ```
 
-Configure `SERVICE_TOKEN`, `YOU_API_KEY`, AWS Bedrock credentials, and
-`PARASAIL_API_KEY`. Bedrock powers target normalization, path construction, and
-intro drafting; Parasail is reserved for the independent evidence audit. Pica
+Configure `SERVICE_TOKEN`, `YOU_API_KEY`, and `PARASAIL_API_KEY`. Parasail
+Qwen3-32B powers target normalization, path construction, and intro drafting;
+a separate Parasail Llama 3.3 70B model performs the evidence audit. Pica
 remains optional and needs `PICA_SECRET`, `PICA_CONNECTION_KEY`, the Gmail send
 action ID from the account’s Pica Actions directory, and `PICA_FROM_EMAIL`.
 

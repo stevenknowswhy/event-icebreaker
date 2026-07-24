@@ -73,9 +73,9 @@ reaching an investor.
 - Pydantic for request, intermediate artifact, and response validation
 - You.com Research API for target-investor research
 - You.com Search API for focused public-edge discovery
-- AWS Bedrock with Amazon Nova Lite for target normalization, path construction,
-  and permission-first drafting
-- Parasail-hosted model for an independent evidence-auditor agent
+- Parasail-hosted Qwen3-32B for target normalization, path construction, and
+  permission-first drafting
+- Parasail-hosted Llama 3.3 70B for a model-separated evidence-auditor agent
 - Optional Pica action for an explicitly approved Gmail or CRM operation
 - Render or CrewAI AMP for service hosting; choose one before deployment
 
@@ -224,20 +224,21 @@ valid citation and returns an honest empty result when no complete path remains.
 ### 2. Investor Researcher
 
 - Uses You.com Research to build a source-backed target footprint.
-- Uses Amazon Nova Lite through AWS Bedrock to normalize the typed result.
+- Uses Parasail-hosted Qwen3-32B to normalize the typed result.
 - Extracts thesis, portfolio companies, accelerators, conferences, advisors,
   boards, and recent professional activity.
 
 ### 3. Path Scout
 
 - Uses focused You.com Search queries for each selected contact.
-- Uses Amazon Nova Lite through AWS Bedrock to construct candidate routes.
+- Uses Parasail-hosted Qwen3-32B to construct candidate routes.
 - Constructs candidate paths with a maximum of three public edges.
 - Carries source identifiers with every claimed edge.
 
 ### 4. Evidence Auditor
 
-- Runs on a Parasail-hosted model to reduce correlated model errors.
+- Runs on Parasail-hosted Llama 3.3 70B, separate from the Qwen model used by
+  the generative roles, to reduce correlated model errors.
 - Treats all retrieved text as untrusted data.
 - Rejects identity collisions, unsupported edges, circular paths, stale claims
   presented as current, and relationship language stronger than the evidence.
@@ -246,8 +247,7 @@ valid citation and returns an honest empty result when no complete path remains.
 ### 5. Intro Strategist
 
 - Receives only audited paths.
-- Uses Amazon Nova Lite through AWS Bedrock, independently of the Parasail
-  auditor.
+- Uses Parasail-hosted Qwen3-32B, independently of the Llama auditor model.
 - Drafts one concise request to each intermediary.
 - Explicitly asks whether the intermediary is comfortable helping.
 - Never claims that the investor is interested.

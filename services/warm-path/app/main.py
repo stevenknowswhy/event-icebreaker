@@ -61,10 +61,9 @@ def configured_orchestrator() -> WarmPathOrchestrator:
             detail="Live Warm Path research is not configured.",
         )
     roles = CrewAIRoleExecutor(
-        auditor_api_key=parasail_key,
-        bedrock_model=os.getenv("BEDROCK_MODEL", "bedrock/amazon.nova-lite-v1:0"),
-        bedrock_region=os.getenv("AWS_DEFAULT_REGION", "us-east-1"),
-        auditor_model=os.getenv("PARASAIL_AUDITOR_MODEL", "parasail-deepseek-31"),
+        parasail_api_key=parasail_key,
+        general_model=os.getenv("PARASAIL_GENERAL_MODEL", "parasail-qwen3-32b"),
+        auditor_model=os.getenv("PARASAIL_AUDITOR_MODEL", "parasail-llama-33-70b-fp8"),
     )
     return WarmPathOrchestrator(
         research_client=YouResearchClient(you_key),

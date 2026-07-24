@@ -11,8 +11,8 @@ flowchart LR
   Flow["FastAPI + CrewAI Flow"]
   YouR["You.com Research"]
   YouS["You.com Search"]
-  Bedrock["AWS Bedrock / Amazon Nova Lite"]
-  Parasail["Parasail independent auditor"]
+  ParasailGeneral["Parasail / Qwen3-32B"]
+  ParasailAudit["Parasail / Llama 3.3 70B auditor"]
   Pica["Pica action layer"]
   Recipient["Approved recipient"]
   Opsera["Opsera delivery governance"]
@@ -23,8 +23,8 @@ flowchart LR
   Proxy -->|"Bearer service token"| Flow
   Flow --> YouR
   Flow --> YouS
-  Flow -->|"research, scout, draft"| Bedrock
-  Flow -->|"audit only"| Parasail
+  Flow -->|"research, scout, draft"| ParasailGeneral
+  Flow -->|"audit only"| ParasailAudit
   Flow -. "separate approved action" .-> Pica
   Pica -. "exact approved message" .-> Recipient
   Opsera -. "architecture + security gates" .-> Web
@@ -48,10 +48,10 @@ flowchart LR
 | Role | Input | Capability | Typed output |
 | --- | --- | --- | --- |
 | Circle Librarian | Selected disclosed fields | Deterministic validation and normalization only | `WarmPathRequest` |
-| Investor Researcher | Target URL + You Research result | Bedrock: normalize a target footprint | `TargetArtifact` |
-| Path Scout | One contact + target + You Search result | Bedrock: build ≤3-edge cited candidates | `ScoutArtifact` |
-| Evidence Auditor | Candidate claims + fingerprints | Parasail: approve, downgrade, reject | `AuditArtifact` |
-| Intro Strategist | Audited path only | Bedrock: draft permission-first request | `IntroDraft` |
+| Investor Researcher | Target URL + You Research result | Parasail Qwen: normalize a target footprint | `TargetArtifact` |
+| Path Scout | One contact + target + You Search result | Parasail Qwen: build ≤3-edge cited candidates | `ScoutArtifact` |
+| Evidence Auditor | Candidate claims + fingerprints | Parasail Llama: approve, downgrade, reject | `AuditArtifact` |
+| Intro Strategist | Audited path only | Parasail Qwen: draft permission-first request | `IntroDraft` |
 
 Contact scouting uses concurrent tasks only after target research completes.
 Deterministic ranking then applies the approved weights: 35% evidence

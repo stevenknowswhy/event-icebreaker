@@ -35,9 +35,10 @@ Start research. Point to the five roles:
 
 - You.com Research builds the target footprint.
 - scouts search selected contacts concurrently.
-- Amazon Nova Lite on AWS Bedrock turns those public results into bounded typed
-  target, path, and draft artifacts.
-- a separate Parasail-hosted auditor can only approve, downgrade, or reject.
+- Parasail-hosted Qwen turns those public results into bounded typed target,
+  path, and draft artifacts.
+- a model-separated Parasail Llama auditor can only approve, downgrade, or
+  reject.
 - deterministic code—not an LLM—requires citations and chooses the top three.
 - the Intro Strategist sees only audited paths.
 

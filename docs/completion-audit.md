@@ -22,8 +22,8 @@ connected account, deployed environment, or provider credits.
 | Target research precedes concurrent contact scouting | Verified | mocked flow-order test |
 | Circle Librarian is a deterministic privacy gate | Verified | request contract and exact permission test |
 | You.com output is typed before later stages | Verified | `TargetArtifact` and `ScoutArtifact` contracts |
-| AWS Bedrock powers research normalization, path construction, and drafting | Ready for live proof | CrewAI native Bedrock configuration and locked `crewai[bedrock]` dependency |
-| Parasail is reserved for independent auditing | Ready for live proof | distinct auditor LLM configuration; no other role receives it |
+| Parasail Qwen powers research normalization, path construction, and drafting | Ready for live proof | CrewAI OpenAI-compatible configuration and locked dependency |
+| Parasail Llama is reserved for model-separated auditing | Ready for live proof | distinct auditor LLM configuration; no other role receives it |
 | Auditor cannot add or substitute claims | Verified | SHA-256 claim-fingerprint tests |
 | Per-run agent contribution receipt is visible | Verified | mobile browser flow renders five typed artifacts and item counts |
 | Tool permissions are least-privilege | Verified | exact permission-map test |
@@ -58,7 +58,7 @@ connected account, deployed environment, or provider credits.
 - Production web build passed.
 - Four server-rendered route tests passed.
 - ESLint passed.
-- 22 Python tests passed; Ruff formatting and lint passed.
+- 23 Python tests passed; Ruff formatting and lint passed.
 - Sender/receiver and Warm Path mobile browser flows passed at 390 × 844.
 - Browser console warnings/errors: zero.
 - Production npm audit: zero vulnerabilities. The full audit reports four
@@ -67,4 +67,4 @@ connected account, deployed environment, or provider credits.
 - Gitleaks found no secrets in source, tests, configuration, or documentation.
 
 The feature is locally complete. Production/demo sign-off still requires one
-live You.com + Bedrock + Parasail run and the two Opsera execution records.
+live You.com + Parasail run and the two Opsera execution records.
