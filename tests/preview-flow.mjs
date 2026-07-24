@@ -72,7 +72,10 @@ try {
   await receiver.goto(shareUrl, { waitUntil: "networkidle" });
 
   assert.equal(await receiver.locator("h1").first().textContent(), "Here’s the signal.");
-  assert.equal(await receiver.locator(".visual-card h2").textContent(), "James");
+  assert.equal(
+    await receiver.locator(".visual-card h2").textContent(),
+    "Stefano",
+  );
   assert.match(
     (await receiver.locator(".visual-card blockquote").textContent()) ?? "",
     /How ESOPs could end the wealth gap/,
@@ -98,7 +101,10 @@ try {
   await invalid.locator("textarea").first().fill(connectionString);
   await invalid.getByRole("button", { name: "Decode profile" }).click();
   await invalid.locator(".visual-card h2").waitFor();
-  assert.equal(await invalid.locator(".visual-card h2").textContent(), "James");
+  assert.equal(
+    await invalid.locator(".visual-card h2").textContent(),
+    "Stefano",
+  );
 
   await mkdir("artifacts", { recursive: true });
   await receiver.screenshot({

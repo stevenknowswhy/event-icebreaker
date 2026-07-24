@@ -32,6 +32,8 @@ test("server-renders the Event Icebreaker sender experience", async () => {
   assert.match(html, /Skip the small talk\./);
   assert.match(html, /Generate my QR code/);
   assert.match(html, /Connection String fallback/);
+  assert.match(html, /Stefano/);
+  assert.doesNotMatch(html, /\bJames\b/);
   assert.match(html, /How ESOPs could end the wealth gap/);
   assert.match(html, /og:image/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);

@@ -46,7 +46,7 @@ export type SharedProfile = {
 };
 
 export const SAMPLE_PROFILE: FullProfile = {
-  name: "James",
+  name: "Stefano",
   role: "Private equity operator and AI builder",
   interests: ["Private Equity", "AI Agents", "Urban Design"],
   spark: "How ESOPs could end the wealth gap",
