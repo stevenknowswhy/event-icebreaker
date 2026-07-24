@@ -80,6 +80,9 @@ class CrewAIRoleExecutor:
             temperature=0,
             timeout=90,
             max_tokens=4_000,
+            extra_body={
+                "chat_template_kwargs": {"enable_thinking": False},
+            },
         )
         self._auditor_llm = LLM(
             model=auditor_model,

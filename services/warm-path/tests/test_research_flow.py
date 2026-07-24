@@ -239,6 +239,10 @@ def test_parasail_models_allow_serverless_cold_start_latency(monkeypatch) -> Non
     )
 
     assert [configuration["timeout"] for configuration in configurations] == [90, 90]
+    assert configurations[0]["extra_body"] == {
+        "chat_template_kwargs": {"enable_thinking": False}
+    }
+    assert "extra_body" not in configurations[1]
 
 
 def test_configured_service_token_is_required(monkeypatch) -> None:
