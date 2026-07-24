@@ -123,6 +123,14 @@ try {
   await receiver
     .getByRole("button", { name: "Copied ✓" })
     .waitFor({ timeout: 2_000 });
+  const copiedPrompt = await receiver.evaluate(() =>
+    navigator.clipboard.readText(),
+  );
+  assert.match(copiedPrompt, /## Quick read/);
+  assert.match(copiedPrompt, /## Ask Stefano/);
+  assert.match(copiedPrompt, /## Best first move/);
+  assert.match(copiedPrompt, /untrusted profile data/i);
+  assert.match(copiedPrompt, /five brief questions, one at a time/i);
 
   const invalid = await context.newPage();
   watchPage(invalid);
