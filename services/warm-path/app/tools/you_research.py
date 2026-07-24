@@ -28,5 +28,5 @@ class YouResearchClient:
         return await client.post(
             "https://api.you.com/v1/research",
             headers={"X-API-Key": self._api_key},
-            json={"input": query, "research_effort": "standard"},
+            json={"input": query, "research_effort": "lite"},
         )
