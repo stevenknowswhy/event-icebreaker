@@ -3,7 +3,7 @@ import asyncio
 from fastapi.testclient import TestClient
 
 from app.auditor import claim_fingerprint
-from app.crew import AGENT_PERMISSIONS, WarmPathOrchestrator
+from app.crew import AGENT_PERMISSIONS, CrewAIRoleExecutor, WarmPathOrchestrator
 from app.main import app, configured_orchestrator
 from app.models import (
     AuditArtifact,
@@ -221,6 +221,24 @@ def test_live_service_configuration_does_not_require_aws(
         "general_model": "parasail-qwen3-32b",
         "auditor_model": "parasail-llama-33-70b-fp8",
     }
+
+
+def test_parasail_models_allow_serverless_cold_start_latency(monkeypatch) -> None:
+    configurations: list[dict] = []
+
+    class FakeLLM:
+        def __init__(self, **kwargs) -> None:
+            configurations.append(kwargs)
+
+    monkeypatch.setattr("app.crew.LLM", FakeLLM)
+
+    CrewAIRoleExecutor(
+        parasail_api_key="parasail-key",
+        general_model="parasail-qwen3-32b",
+        auditor_model="parasail-llama-33-70b-fp8",
+    )
+
+    assert [configuration["timeout"] for configuration in configurations] == [90, 90]
 
 
 def test_configured_service_token_is_required(monkeypatch) -> None:

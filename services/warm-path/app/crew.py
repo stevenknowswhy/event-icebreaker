@@ -78,7 +78,7 @@ class CrewAIRoleExecutor:
             api_key=parasail_api_key,
             base_url="https://api.parasail.io/v1",
             temperature=0,
-            timeout=45,
+            timeout=90,
             max_tokens=4_000,
         )
         self._auditor_llm = LLM(
@@ -86,7 +86,7 @@ class CrewAIRoleExecutor:
             api_key=parasail_api_key,
             base_url="https://api.parasail.io/v1",
             temperature=0,
-            timeout=45,
+            timeout=90,
             max_tokens=4_000,
         )
 
