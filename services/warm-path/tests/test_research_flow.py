@@ -218,7 +218,7 @@ def test_live_service_configuration_does_not_require_aws(
 
     assert captured == {
         "parasail_api_key": "parasail-key",
-        "general_model": "parasail-qwen3-32b",
+        "general_model": "parasail-qwen3p5-35b-a3b",
         "auditor_model": "parasail-llama-33-70b-fp8",
     }
 
@@ -234,7 +234,7 @@ def test_parasail_models_allow_serverless_cold_start_latency(monkeypatch) -> Non
 
     CrewAIRoleExecutor(
         parasail_api_key="parasail-key",
-        general_model="parasail-qwen3-32b",
+        general_model="parasail-qwen3p5-35b-a3b",
         auditor_model="parasail-llama-33-70b-fp8",
     )
 

@@ -21,7 +21,7 @@ services:
       - key: PARASAIL_API_KEY
         sync: false
       - key: PARASAIL_GENERAL_MODEL
-        value: parasail-qwen3-32b
+        value: parasail-qwen3p5-35b-a3b
       - key: PARASAIL_AUDITOR_MODEL
         value: parasail-llama-33-70b-fp8
       - key: PICA_SECRET

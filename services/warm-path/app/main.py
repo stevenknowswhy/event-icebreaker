@@ -62,7 +62,9 @@ def configured_orchestrator() -> WarmPathOrchestrator:
         )
     roles = CrewAIRoleExecutor(
         parasail_api_key=parasail_key,
-        general_model=os.getenv("PARASAIL_GENERAL_MODEL", "parasail-qwen3-32b"),
+        general_model=os.getenv(
+            "PARASAIL_GENERAL_MODEL", "parasail-qwen3p5-35b-a3b"
+        ),
         auditor_model=os.getenv("PARASAIL_AUDITOR_MODEL", "parasail-llama-33-70b-fp8"),
     )
     return WarmPathOrchestrator(
