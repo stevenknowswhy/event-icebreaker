@@ -1,0 +1,369 @@
+export const CONNECTION_BEGIN =
+  "-----BEGIN EVENT ICEBREAKER PROFILE-----";
+export const CONNECTION_END = "-----END EVENT ICEBREAKER PROFILE-----";
+
+export const OPENNESS_LEVELS = {
+  low: 1,
+  medium: 2,
+  high: 3,
+  max: 4,
+} as const;
+
+export type Openness = keyof typeof OPENNESS_LEVELS;
+export type Intent = "networking" | "friendship" | "dating" | "general";
+
+export type FullProfile = {
+  name: string;
+  role: string;
+  interests: string[];
+  spark: string;
+  sparkDetails: string;
+  values: string[];
+  communicationStyle: string;
+  funFact: string;
+  personality: [number, number, number, number, number];
+};
+
+export type ShareSettings = {
+  openness: Openness;
+  intent: Intent;
+  includeSpark: boolean;
+};
+
+export type SharedProfile = {
+  v: 1;
+  n: string;
+  o: 1 | 2 | 3 | 4;
+  i: Intent;
+  r?: string;
+  x: string[];
+  s?: string;
+  sd?: string;
+  va?: string[];
+  c?: string;
+  f?: string;
+  p?: [number, number, number, number, number];
+};
+
+export const SAMPLE_PROFILE: FullProfile = {
+  name: "James",
+  role: "Private equity operator and AI builder",
+  interests: ["Private Equity", "AI Agents", "Urban Design"],
+  spark: "How ESOPs could end the wealth gap",
+  sparkDetails:
+    "How ESOPs could end the wealth gap if we made them the default corporate structure.",
+  values: ["Ownership", "Transparency", "Curiosity"],
+  communicationStyle: "Direct and concise",
+  funFact: "Visited 40 countries but never learned to swim",
+  personality: [0.85, 0.72, 0.6, 0.9, 0.35],
+};
+
+const TEXT_LIMITS = {
+  name: 80,
+  role: 120,
+  interest: 50,
+  spark: 160,
+  sparkDetails: 360,
+  value: 40,
+  communication: 160,
+  funFact: 220,
+} as const;
+
+function cleanText(value: string, maxLength: number): string {
+  return value.trim().replace(/\s+/g, " ").slice(0, maxLength);
+}
+
+function cleanList(
+  values: string[],
+  itemLimit: number,
+  maxItems: number,
+): string[] {
+  return values
+    .map((value) => cleanText(value, itemLimit))
+    .filter(Boolean)
+    .slice(0, maxItems);
+}
+
+export function createSharedProfile(
+  profile: FullProfile,
+  settings: ShareSettings,
+): SharedProfile {
+  const openness = OPENNESS_LEVELS[settings.openness];
+  const interestLimit = [0, 2, 4, 6, 8][openness];
+  const shared: SharedProfile = {
+    v: 1,
+    n: cleanText(profile.name, TEXT_LIMITS.name),
+    o: openness,
+    i: settings.intent,
+    x: cleanList(profile.interests, TEXT_LIMITS.interest, interestLimit),
+  };
+
+  const role = cleanText(profile.role, TEXT_LIMITS.role);
+  if (role) shared.r = role;
+
+  if (settings.includeSpark) {
+    const spark = cleanText(profile.spark, TEXT_LIMITS.spark);
+    if (spark) shared.s = spark;
+  }
+
+  if (openness >= 2) {
+    const communication = cleanText(
+      profile.communicationStyle,
+      TEXT_LIMITS.communication,
+    );
+    if (communication) shared.c = communication;
+  }
+
+  if (openness >= 3) {
+    if (settings.includeSpark) {
+      const details = cleanText(
+        profile.sparkDetails,
+        TEXT_LIMITS.sparkDetails,
+      );
+      if (details) shared.sd = details;
+    }
+
+    const values = cleanList(profile.values, TEXT_LIMITS.value, 6);
+    if (values.length) shared.va = values;
+
+    const funFact = cleanText(profile.funFact, TEXT_LIMITS.funFact);
+    if (funFact) shared.f = funFact;
+
+    shared.p = profile.personality.map((score) =>
+      Math.min(1, Math.max(0, Number(score.toFixed(2)))),
+    ) as SharedProfile["p"];
+  }
+
+  return shared;
+}
+
+export function encodePayload(payload: SharedProfile): string {
+  const bytes = new TextEncoder().encode(JSON.stringify(payload));
+  let binary = "";
+  for (const byte of bytes) binary += String.fromCharCode(byte);
+
+  return btoa(binary)
+    .replace(/\+/g, "-")
+    .replace(/\//g, "_")
+    .replace(/=+$/g, "");
+}
+
+export function decodePayload(encoded: string): SharedProfile {
+  if (!/^[A-Za-z0-9_-]+$/.test(encoded) || encoded.length > 6000) {
+    throw new Error("This Icebreaker payload is invalid or too large.");
+  }
+
+  const base64 = encoded.replace(/-/g, "+").replace(/_/g, "/");
+  const padded = base64.padEnd(Math.ceil(base64.length / 4) * 4, "=");
+  const binary = atob(padded);
+  const bytes = Uint8Array.from(binary, (character) =>
+    character.charCodeAt(0),
+  );
+  const parsed = JSON.parse(new TextDecoder().decode(bytes));
+  return validateSharedProfile(parsed);
+}
+
+function isRecord(value: unknown): value is Record<string, unknown> {
+  return typeof value === "object" && value !== null && !Array.isArray(value);
+}
+
+function readText(
+  record: Record<string, unknown>,
+  key: string,
+  label: string,
+  maxLength: number,
+  required = false,
+): string | undefined {
+  const value = record[key];
+  if (value === undefined && !required) return undefined;
+  if (
+    typeof value !== "string" ||
+    (required && value.trim().length === 0) ||
+    value.length > maxLength
+  ) {
+    throw new Error(`The shared ${label} is invalid.`);
+  }
+  return value;
+}
+
+function readTextList(
+  record: Record<string, unknown>,
+  key: string,
+  label: string,
+  maxItems: number,
+  itemLength: number,
+  required = false,
+): string[] | undefined {
+  const value = record[key];
+  if (value === undefined && !required) return undefined;
+  if (
+    !Array.isArray(value) ||
+    value.length > maxItems ||
+    value.some(
+      (item) =>
+        typeof item !== "string" ||
+        item.trim().length === 0 ||
+        item.length > itemLength,
+    )
+  ) {
+    throw new Error(`The shared ${label} are invalid.`);
+  }
+  return value as string[];
+}
+
+export function validateSharedProfile(value: unknown): SharedProfile {
+  if (!isRecord(value)) {
+    throw new Error("This Icebreaker link has an unsupported format.");
+  }
+  if (value.v !== 1) {
+    throw new Error("This Icebreaker link has an unsupported format.");
+  }
+  if (
+    !Number.isInteger(value.o) ||
+    typeof value.o !== "number" ||
+    value.o < 1 ||
+    value.o > 4
+  ) {
+    throw new Error("The shared openness level is invalid.");
+  }
+  if (
+    value.i !== "networking" &&
+    value.i !== "friendship" &&
+    value.i !== "dating" &&
+    value.i !== "general"
+  ) {
+    throw new Error("The shared intent is invalid.");
+  }
+
+  const profile: SharedProfile = {
+    v: 1,
+    n: readText(value, "n", "name", TEXT_LIMITS.name, true) as string,
+    o: value.o as SharedProfile["o"],
+    i: value.i,
+    x: (readTextList(
+      value,
+      "x",
+      "interests",
+      8,
+      TEXT_LIMITS.interest,
+      true,
+    ) ?? []) as string[],
+  };
+
+  const role = readText(value, "r", "role", TEXT_LIMITS.role);
+  const spark = readText(value, "s", "Spark", TEXT_LIMITS.spark);
+  const sparkDetails = readText(
+    value,
+    "sd",
+    "Spark details",
+    TEXT_LIMITS.sparkDetails,
+  );
+  const values = readTextList(
+    value,
+    "va",
+    "values",
+    6,
+    TEXT_LIMITS.value,
+  );
+  const communication = readText(
+    value,
+    "c",
+    "communication style",
+    TEXT_LIMITS.communication,
+  );
+  const funFact = readText(value, "f", "fun fact", TEXT_LIMITS.funFact);
+
+  if (role !== undefined) profile.r = role;
+  if (spark !== undefined) profile.s = spark;
+  if (sparkDetails !== undefined) profile.sd = sparkDetails;
+  if (values !== undefined) profile.va = values;
+  if (communication !== undefined) profile.c = communication;
+  if (funFact !== undefined) profile.f = funFact;
+
+  if (value.p !== undefined) {
+    if (
+      !Array.isArray(value.p) ||
+      value.p.length !== 5 ||
+      value.p.some(
+        (score) =>
+          typeof score !== "number" ||
+          !Number.isFinite(score) ||
+          score < 0 ||
+          score > 1,
+      )
+    ) {
+      throw new Error("The shared personality scores are invalid.");
+    }
+    profile.p = value.p as SharedProfile["p"];
+  }
+
+  return profile;
+}
+
+export function createConnectionString(encodedPayload: string): string {
+  return `${CONNECTION_BEGIN}\n${encodedPayload}\n${CONNECTION_END}`;
+}
+
+export function extractEncodedPayload(input: string): string {
+  const trimmed = input.trim();
+  const marked = trimmed.match(
+    /-----BEGIN EVENT ICEBREAKER PROFILE-----\s*([A-Za-z0-9_-]+)\s*-----END EVENT ICEBREAKER PROFILE-----/,
+  );
+  if (marked) return marked[1];
+
+  try {
+    const url = new URL(trimmed);
+    const hashPayload = url.hash.slice(1);
+    if (hashPayload) return hashPayload;
+    const queryPayload = url.searchParams.get("p");
+    if (queryPayload) return queryPayload;
+  } catch {
+    // A raw Base64URL payload is also a valid manual fallback.
+  }
+
+  if (/^[A-Za-z0-9_-]+$/.test(trimmed)) return trimmed;
+  throw new Error("Paste a complete Icebreaker link or Connection String.");
+}
+
+const OPENNESS_NAMES = ["", "Low", "Medium", "High", "Max"];
+const PERSONALITY_NAMES = [
+  "Openness",
+  "Conscientiousness",
+  "Extraversion",
+  "Agreeableness",
+  "Neuroticism",
+];
+
+export function createAiPrompt(profile: SharedProfile): string {
+  const lines = [
+    "I just met someone at an event. Here is their Event Icebreaker profile:",
+    "",
+    `Name: ${profile.n}`,
+    `Openness: ${OPENNESS_NAMES[profile.o]}`,
+    `Intent: ${profile.i}`,
+  ];
+
+  if (profile.r) lines.push(`Role: ${profile.r}`);
+  if (profile.x.length) lines.push(`Interests: ${profile.x.join(", ")}`);
+  if (profile.s) lines.push(`Spark: ${profile.s}`);
+  if (profile.sd) lines.push(`Spark details: ${profile.sd}`);
+  if (profile.va?.length) lines.push(`Values: ${profile.va.join(", ")}`);
+  if (profile.c) lines.push(`Communication: ${profile.c}`);
+  if (profile.f) lines.push(`Fun fact: ${profile.f}`);
+  if (profile.p) {
+    lines.push(
+      `Personality (OCEAN): ${profile.p
+        .map((score, index) => `${PERSONALITY_NAMES[index]} ${score.toFixed(2)}`)
+        .join(" | ")}`,
+    );
+  }
+
+  lines.push(
+    "",
+    `Generate three natural, specific conversation questions I can ask ${profile.n}. Reference details from the profile and avoid generic interview questions.`,
+    "",
+    "After giving me the questions, offer to build my own Event Icebreaker profile through five brief questions for better two-way matches in the future.",
+  );
+
+  return lines.join("\n");
+}

@@ -1,0 +1,6 @@
+node_modules/
+dist/
+.next/
+.wrangler/
+artifacts/
+.DS_Store
