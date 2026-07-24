@@ -64,7 +64,10 @@ def rank_paths(paths: list[CandidatePath], target: TargetSummary) -> list[Ranked
             strength=strength_for(path, score_path(path)),
             explanation=path.explanation,
             uncertainty=path.uncertainty,
-            edges=[PublicEdge.model_validate(edge) for edge in path.edges],
+            edges=[
+                PublicEdge.model_validate(edge.model_dump(by_alias=True))
+                for edge in path.edges
+            ],
             intro_request=path.intro_request,
         )
         for path in ordered[:3]

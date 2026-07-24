@@ -71,6 +71,29 @@ def test_uncited_candidate_is_removed_instead_of_failing_the_run() -> None:
     assert rank_paths([item], TARGET) == []
 
 
+def test_cited_candidate_edges_are_promoted_to_public_edges() -> None:
+    item = path("Maya", 0.9)
+    item.edges = [
+        CandidateEdge(
+            **{
+                "from": "Maya",
+                "relationship": "program mentor",
+                "to": "Elena Park",
+                "citations": [
+                    Citation(
+                        title="Mentor directory",
+                        url="https://evidence.example/mentors",
+                    )
+                ],
+            }
+        )
+    ]
+
+    ranked = rank_paths([item], TARGET)
+
+    assert isinstance(ranked[0].edges[0], PublicEdge)
+
+
 def test_broken_and_circular_routes_are_removed() -> None:
     broken = path("Maya", 0.9)
     broken.edges = [
