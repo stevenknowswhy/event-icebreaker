@@ -32,73 +32,15 @@ try {
   );
   assert.equal(await sender.locator(".qr-frame svg").count(), 0);
   assert.equal(
-    await sender.getByRole("button", { name: "Send an Icebreaker" }).count(),
+    await sender.getByRole("link", { name: /Send an Icebreaker/ }).count(),
     1,
   );
   assert.equal(
     await sender
-      .getByRole("button", { name: "Send a Deep Connection Request" })
+      .getByRole("link", { name: /Send a Deep Connection Request/ })
       .count(),
     1,
   );
-  assert.equal(await sender.locator(".share-studio__controls").count(), 0);
-  await sender
-    .getByRole("button", { name: "Send an Icebreaker" })
-    .click();
-  assert.equal(await sender.locator(".share-studio__controls").count(), 1);
-  assert.equal(await sender.locator(".qr-frame svg").count(), 0);
-  await sender
-    .getByRole("button", { name: "Send an Icebreaker" })
-    .click();
-  assert.equal(await sender.locator(".share-studio__controls").count(), 0);
-  assert.equal(await sender.locator(".qr-frame svg").count(), 0);
-  await sender
-    .getByRole("button", { name: "Send an Icebreaker" })
-    .click();
-  await sender
-    .getByRole("button", { name: /Generate QR to scan/i })
-    .click();
-  assert.equal(await sender.locator(".qr-frame svg").count(), 1);
-  assert.match(
-    (await sender.locator(".visual-card__role").first().textContent()) ?? "",
-    /Emergency management strategist/i,
-  );
-  await sender.locator(".fallback-grid").scrollIntoViewIfNeeded();
-  await sender.locator(".fallback-grid details").first().locator("summary").click();
-  await sender
-    .locator(".fallback-grid details")
-    .nth(1)
-    .locator("summary")
-    .click();
-
-  const shareUrl = await sender
-    .locator(".fallback-grid details")
-    .first()
-    .locator("code")
-    .textContent();
-  const connectionString = await sender
-    .locator(".fallback-grid details")
-    .nth(1)
-    .locator("pre")
-    .textContent();
-
-  assert.ok(shareUrl?.startsWith(`${origin}/receive#`));
-  assert.ok(shareUrl.length < 1800);
-  assert.match(
-    connectionString ?? "",
-    /BEGIN EVENT ICEBREAKER PROFILE[\s\S]+END EVENT ICEBREAKER PROFILE/,
-  );
-
-  const copyLink = sender.getByRole("button", { name: "Copy link" });
-  await copyLink.click();
-  await sender
-    .getByRole("button", { name: "Copied ✓" })
-    .waitFor({ timeout: 2_000 });
-
-  const downloadPromise = sender.waitForEvent("download");
-  await sender.getByRole("button", { name: "Download card" }).click();
-  const download = await downloadPromise;
-  assert.equal(download.suggestedFilename(), "stefano-icebreaker-card.png");
 
   await sender.getByRole("button", { name: /60-sec demo/i }).click();
   assert.equal(
@@ -107,17 +49,64 @@ try {
   );
   await sender.getByRole("button", { name: "Close demo" }).click();
 
+  await sender
+    .getByRole("link", { name: /Send an Icebreaker/ })
+    .click();
+  await sender.waitForURL(`${origin}/send/icebreaker`);
+  assert.match(
+    (await sender.locator(".wizard-topline").textContent()) ?? "",
+    /Step 1 of 4/,
+  );
+  assert.equal(
+    await sender.locator(".wizard-card h1").textContent(),
+    "How much would you like to share?",
+  );
+  await sender.getByRole("button", { name: /Continue/ }).click();
+  assert.equal(
+    await sender.locator(".wizard-card h1").textContent(),
+    "What kind of connection is this?",
+  );
+  await sender.getByRole("button", { name: /Continue/ }).click();
+  assert.equal(
+    await sender.locator(".wizard-card h1").textContent(),
+    "Review your Icebreaker.",
+  );
+  assert.match(
+    (await sender.locator(".visual-card__role").textContent()) ?? "",
+    /Emergency management strategist/i,
+  );
+  await sender
+    .getByRole("button", { name: /Generate QR to scan/i })
+    .click();
+  assert.equal(await sender.locator(".qr-frame svg").count(), 1);
+  assert.equal(
+    await sender.locator(".wizard-card h1").textContent(),
+    "Show this QR for them to scan.",
+  );
+  await sender.locator(".wizard-backup summary").click();
+
+  const shareUrl = await sender.locator(".wizard-backup code").textContent();
+  await sender
+    .getByRole("button", { name: "Copy Connection String" })
+    .click();
+  const connectionString = await sender.evaluate(() =>
+    navigator.clipboard.readText(),
+  );
+
+  assert.ok(shareUrl?.startsWith(`${origin}/receive#`));
+  assert.ok(shareUrl.length < 1800);
+  assert.match(
+    connectionString ?? "",
+    /BEGIN EVENT ICEBREAKER PROFILE[\s\S]+END EVENT ICEBREAKER PROFILE/,
+  );
+
+  await sender.getByRole("button", { name: "Copy link" }).click();
+
   await mkdir("artifacts", { recursive: true });
   await sender.screenshot({
     path: "artifacts/sender-mobile.png",
     fullPage: true,
   });
-
-  await sender.getByRole("button", { name: "Next question" }).click();
-  assert.equal(
-    await sender.locator(".setup-question h3").textContent(),
-    "What has your attention?",
-  );
 
   const receiver = await context.newPage();
   watchPage(receiver);
@@ -197,14 +186,17 @@ try {
     /trustworthy AI/i,
   );
 
-  await sender.goto(`${origin}/`, { waitUntil: "networkidle" });
+  await sender.goto(`${origin}/send/deep`, { waitUntil: "networkidle" });
   await sender
-    .getByRole("button", { name: "Send a Deep Connection Request" })
-    .click();
-  await sender.getByRole("heading", {
-    name: "Choose what this QR can unlock.",
-  }).waitFor();
+    .getByRole("heading", {
+      name: "How much should the first impression reveal?",
+    })
+    .waitFor();
+  await sender.getByRole("button", { name: /Continue/ }).click();
   await sender.getByRole("button", { name: /Private Deep/i }).click();
+  await sender.getByRole("button", { name: /Continue/ }).click();
+  await sender.getByRole("button", { name: /Continue/ }).click();
+  await sender.getByRole("button", { name: /Continue/ }).click();
   await sender
     .getByRole("button", { name: /Generate QR to scan/i })
     .click();
@@ -213,11 +205,7 @@ try {
     .filter({ hasText: "Private Deep ready" })
     .waitFor({ timeout: 10_000 });
 
-  const privateShareUrl = await sender
-    .locator(".fallback-grid details")
-    .first()
-    .locator("code")
-    .textContent();
+  const privateShareUrl = await sender.locator(".wizard-backup code").textContent();
   assert.ok(privateShareUrl?.startsWith(`${origin}/c/`));
   assert.match(privateShareUrl ?? "", /#v=2&/);
   assert.match(privateShareUrl ?? "", /&m=p&k=/);
@@ -280,12 +268,17 @@ try {
     false,
   );
 
+  await sender.goto(`${origin}/send/deep`, { waitUntil: "networkidle" });
+  await sender.getByRole("button", { name: /Continue/ }).click();
   await sender.getByRole("button", { name: /AI-readable/i }).click();
+  await sender.getByRole("button", { name: /Continue/ }).click();
+  await sender.getByRole("button", { name: /Continue/ }).click();
   await sender
-    .getByText(/I understand that anyone or any AI/i)
+    .getByText(/I understand anyone or any AI/i)
     .locator("..")
     .locator("input")
     .check();
+  await sender.getByRole("button", { name: /Continue/ }).click();
   await sender
     .getByRole("button", { name: /Generate QR to scan/i })
     .click();
@@ -293,11 +286,7 @@ try {
     .locator(".payload-meter")
     .filter({ hasText: "AI-readable Deep ready" })
     .waitFor({ timeout: 10_000 });
-  const agentShareUrl = await sender
-    .locator(".fallback-grid details")
-    .first()
-    .locator("code")
-    .textContent();
+  const agentShareUrl = await sender.locator(".wizard-backup code").textContent();
   assert.ok(agentShareUrl?.startsWith(`${origin}/c/`));
   assert.match(agentShareUrl ?? "", /&m=a/);
   assert.equal((agentShareUrl ?? "").includes("&k="), false);

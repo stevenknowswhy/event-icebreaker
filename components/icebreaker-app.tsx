@@ -253,7 +253,7 @@ export function DownloadCardButton({ profile }: { profile: SharedProfile }) {
   );
 }
 
-function ShareControls({
+function OpennessControl({
   settings,
   onChange,
 }: {
@@ -261,60 +261,78 @@ function ShareControls({
   onChange: (settings: ShareSettings) => void;
 }) {
   return (
-    <div className="share-studio__controls">
-      <div className="share-control">
-        <span className="share-control__label">Openness</span>
-        <div className="segmented-control">
-          {(Object.keys(OPENNESS_LEVELS) as Openness[]).map((level) => (
-            <button
-              className={settings.openness === level ? "is-active" : ""}
-              type="button"
-              key={level}
-              aria-pressed={settings.openness === level}
-              onClick={() => onChange({ ...settings, openness: level })}
-            >
-              {level}
-            </button>
-          ))}
-        </div>
-        <small>{OPENNESS_COPY[settings.openness]}</small>
+    <div className="share-control wizard-control">
+      <div className="segmented-control">
+        {(Object.keys(OPENNESS_LEVELS) as Openness[]).map((level) => (
+          <button
+            className={settings.openness === level ? "is-active" : ""}
+            type="button"
+            key={level}
+            aria-pressed={settings.openness === level}
+            onClick={() => onChange({ ...settings, openness: level })}
+          >
+            {level}
+          </button>
+        ))}
       </div>
-      <div className="share-control">
-        <span className="share-control__label">Intent</span>
-        <div className="choice-grid">
-          {(Object.keys(INTENT_LABELS) as Intent[]).map((intent) => (
-            <button
-              className={settings.intent === intent ? "is-active" : ""}
-              type="button"
-              key={intent}
-              aria-pressed={settings.intent === intent}
-              onClick={() => onChange({ ...settings, intent })}
-            >
-              {INTENT_LABELS[intent]}
-            </button>
-          ))}
-        </div>
-      </div>
-      <label className="toggle-row toggle-row--compact">
-        <span>
-          <strong>Include current Spark</strong>
-          <small>Your strongest conversation hook</small>
-        </span>
-        <input
-          type="checkbox"
-          checked={settings.includeSpark}
-          onChange={(event) =>
-            onChange({ ...settings, includeSpark: event.target.checked })
-          }
-        />
-      </label>
+      <small>{OPENNESS_COPY[settings.openness]}</small>
     </div>
   );
 }
 
-type SenderShareFlow = "quick" | "deep";
+function IntentControl({
+  settings,
+  onChange,
+}: {
+  settings: ShareSettings;
+  onChange: (settings: ShareSettings) => void;
+}) {
+  return (
+    <div className="share-control wizard-control">
+      <div className="choice-grid">
+        {(Object.keys(INTENT_LABELS) as Intent[]).map((intent) => (
+          <button
+            className={settings.intent === intent ? "is-active" : ""}
+            type="button"
+            key={intent}
+            aria-pressed={settings.intent === intent}
+            onClick={() => onChange({ ...settings, intent })}
+          >
+            {INTENT_LABELS[intent]}
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
 
-function SenderMode() {
+function SparkControl({
+  settings,
+  onChange,
+}: {
+  settings: ShareSettings;
+  onChange: (settings: ShareSettings) => void;
+}) {
+  return (
+    <label className="toggle-row wizard-toggle">
+      <span>
+        <strong>Include current Spark</strong>
+        <small>Your strongest conversation hook</small>
+      </span>
+      <input
+        type="checkbox"
+        checked={settings.includeSpark}
+        onChange={(event) =>
+          onChange({ ...settings, includeSpark: event.target.checked })
+        }
+      />
+    </label>
+  );
+}
+
+export type SenderPage = "home" | "quick" | "deep" | "profile";
+
+function SenderMode({ page }: { page: SenderPage }) {
   const defaultSettings: ShareSettings = {
     openness: "high",
     intent: "networking",
@@ -338,7 +356,10 @@ function SenderMode() {
   const [activeSessionKind, setActiveSessionKind] = useState<
     "private" | "agent-readable" | null
   >(null);
-  const [shareFlow, setShareFlow] = useState<SenderShareFlow | null>(null);
+  const shareFlow =
+    page === "quick" || page === "deep" ? page : null;
+  const totalSteps = page === "deep" ? 6 : 4;
+  const [wizardStep, setWizardStep] = useState(0);
   const [shareReady, setShareReady] = useState(false);
 
   useEffect(() => {
@@ -371,9 +392,13 @@ function SenderMode() {
           const savedDeepPreferences = localStorage.getItem(
             DEEP_SHARE_STORAGE_KEY,
           );
-          const nextDeepPreferences = savedDeepPreferences
+          const storedDeepPreferences = savedDeepPreferences
             ? validateDeepSharePreferences(JSON.parse(savedDeepPreferences))
             : createDefaultDeepSharePreferences(nextDeepProfile);
+          const nextDeepPreferences =
+            page === "deep" && storedDeepPreferences.mode === "quick"
+              ? { ...storedDeepPreferences, mode: "private" as const }
+              : storedDeepPreferences;
           setDeepProfile(nextDeepProfile);
           setDeepPreferences(nextDeepPreferences);
 
@@ -486,27 +511,7 @@ function SenderMode() {
     setShareUrl("");
   }
 
-  function selectShareFlow(flow: SenderShareFlow) {
-    if (shareFlow === flow) {
-      setShareFlow(null);
-      setShareReady(false);
-      setShareUrl("");
-      return;
-    }
-    setShareFlow(flow);
-    setShareReady(false);
-    setShareUrl("");
-    if (flow === "deep" && deepPreferences.mode === "quick") {
-      const next = {
-        ...deepPreferences,
-        mode: "private" as const,
-      };
-      setDeepPreferences(next);
-      localStorage.setItem(DEEP_SHARE_STORAGE_KEY, JSON.stringify(next));
-    }
-  }
-
-  async function generateShare(scroll = true) {
+  async function generateShare() {
     if (!shareFlow) return;
     const nextShared = createSharedProfile(profile, settings);
     const quickPayload = encodePayload(nextShared);
@@ -659,11 +664,7 @@ function SenderMode() {
 
     setShareUrl(nextShareUrl);
     setShareReady(true);
-    if (scroll) {
-      document
-        .getElementById("share-studio")
-        ?.scrollIntoView({ behavior: "smooth", block: "start" });
-    }
+    setWizardStep(totalSteps - 1);
   }
 
   async function shareProfile() {
@@ -699,255 +700,293 @@ function SenderMode() {
     setSessionStatus("Deep access revoked · Quick Connect ready");
   }
 
-  return (
-    <main>
-      <SiteHeader mode="sender" />
-
-      <section className="sender-intro shell">
-        <div>
-          <p className="eyebrow">YOUR SIGNAL, NOT YOUR RÉSUMÉ</p>
-          <h1>Skip the small talk.</h1>
-          <p>
-            Share enough context for someone to know what would be interesting
-            to discuss with you.
-          </p>
-        </div>
-        <div className="trust-row" aria-label="Privacy features">
-          <span>◆ No account</span>
-          <span>◆ Stays on device</span>
-          <span>◆ You choose what travels</span>
-        </div>
-      </section>
-
-      <section className="share-path-section">
-        <div className="shell">
-          <div className="share-path-heading">
-            <p className="step-label">CHOOSE HOW TO CONNECT</p>
-            <h2>What would you like to send?</h2>
-            <p>
-              Start with a fast conversation signal, or intentionally unlock a
-              deeper Connection Story.
-            </p>
+  if (page === "home") {
+    return (
+      <main className="sender-home">
+        <SiteHeader mode="sender" />
+        <section className="sender-choice shell">
+          <div className="sender-choice__intro">
+            <p className="eyebrow">CHOOSE YOUR NEXT MOVE</p>
+            <h1>Skip the small talk.</h1>
+            <p>What would you like the other person to receive?</p>
           </div>
           <div className="share-path-grid">
-            <button
-              className={shareFlow === "quick" ? "is-active" : ""}
-              type="button"
-              aria-pressed={shareFlow === "quick"}
-              aria-expanded={shareFlow === "quick"}
-              aria-controls="share-controls"
-              onClick={() => selectShareFlow("quick")}
-            >
+            <a href="/send/icebreaker">
               <span className="share-path-number">01</span>
               <span>
                 <strong>Send an Icebreaker</strong>
                 <small>
-                  Share your Visual Card, interests, Spark, and conversation
-                  starters.
+                  A fast Visual Card with conversation context. Four short
+                  steps.
                 </small>
               </span>
               <span className="share-path-arrow">→</span>
-            </button>
-            <button
-              className={shareFlow === "deep" ? "is-active" : ""}
-              type="button"
-              aria-pressed={shareFlow === "deep"}
-              aria-expanded={shareFlow === "deep"}
-              aria-controls="share-controls"
-              onClick={() => selectShareFlow("deep")}
-            >
+            </a>
+            <a href="/send/deep">
               <span className="share-path-number">02</span>
               <span>
                 <strong>Send a Deep Connection Request</strong>
                 <small>
-                  Share selected parts of your Personal Wiki with privacy,
-                  expiry, and link controls.
+                  A temporary, selective view of your Connection Story.
                 </small>
               </span>
               <span className="share-path-arrow">→</span>
-            </button>
+            </a>
           </div>
+          <div className="sender-choice__utility">
+            <span>Your saved profile stays on this device.</span>
+            <a href="/profile/setup">Edit Icebreaker profile</a>
+            <a href="/deep/setup">Edit Connection Story</a>
+          </div>
+        </section>
+        <SiteFooter />
+      </main>
+    );
+  }
+
+  if (page === "profile") {
+    return (
+      <main>
+        <SiteHeader mode="sender" />
+        <section className="profile-editor-page shell compact-builder">
+          <a className="wizard-back-link" href="/">
+            ← Back to send options
+          </a>
+          <ProfileSetup
+            profile={profile}
+            onChange={updateProfile}
+            onFinish={() => {
+              window.location.href = "/send/icebreaker";
+            }}
+            saveState={saveState}
+          />
+        </section>
+        <SiteFooter />
+      </main>
+    );
+  }
+
+  if (page === "deep" && !deepProfile) {
+    return (
+      <main>
+        <SiteHeader mode="sender" />
+        <section className="wizard-page shell">
+          <a className="wizard-back-link" href="/">
+            ← Back
+          </a>
+          <div className="wizard-card wizard-card--empty">
+            <p className="step-label">DEEP CONNECTION SETUP</p>
+            <h1>Create your Connection Story first.</h1>
+            <p>
+              Deep requests can only share sections you have written and
+              explicitly approved.
+            </p>
+            <a className="button button--primary" href="/deep/setup">
+              Create my Connection Story →
+            </a>
+          </div>
+        </section>
+        <SiteFooter />
+      </main>
+    );
+  }
+
+  const quickTitles = [
+    "How much would you like to share?",
+    "What kind of connection is this?",
+    "Review your Icebreaker.",
+    "Show this QR for them to scan.",
+  ];
+  const deepTitles = [
+    "How much should the first impression reveal?",
+    "How should the deeper story open?",
+    "Which parts of your story can they see?",
+    "Should links travel, and for how long?",
+    "Review exactly what they can unlock.",
+    "Show this QR for them to scan.",
+  ];
+  const titles = page === "deep" ? deepTitles : quickTitles;
+  const reviewProfile = createSharedProfile(profile, settings);
+  const isReviewStep =
+    (page === "quick" && wizardStep === 2) ||
+    (page === "deep" && wizardStep === 4);
+  const isQrStep = wizardStep === totalSteps - 1;
+  const canGenerate =
+    Boolean(profile.name.trim()) &&
+    Boolean(shareFlow) &&
+    (page !== "deep" || Boolean(deepProfile)) &&
+    (page !== "deep" ||
+      deepPreferences.mode !== "agent-readable" ||
+      deepPreferences.agentReadableAccepted);
+
+  function previousStep() {
+    setShareReady(false);
+    setWizardStep((current) => Math.max(0, current - 1));
+  }
+
+  return (
+    <main className="wizard-layout">
+      <SiteHeader mode="sender" />
+      <section className="wizard-page shell">
+        <div className="wizard-topline">
+          <a className="wizard-back-link" href="/">
+            ← Cancel
+          </a>
+          <span>
+            Step {wizardStep + 1} of {totalSteps}
+          </span>
         </div>
-      </section>
-
-      {shareFlow && (
-        <section className="share-studio-section" id="share-controls">
-          <div className="shell">
-            <div className="section-heading section-heading--compact">
-              <div>
-                <p className="step-label">
-                  {shareFlow === "quick"
-                    ? "ICEBREAKER CONTROLS"
-                    : "DEEP CONNECTION CONTROLS"}
-                </p>
-                <h2>
-                  {shareFlow === "quick"
-                    ? "Choose how much of your signal to send."
-                    : "Choose exactly what this request can unlock."}
-                </h2>
-              </div>
-              <button
-                className="button button--quiet"
-                type="button"
-                onClick={() => {
-                  setShareFlow(null);
-                  setShareReady(false);
-                  setShareUrl("");
-                }}
-              >
-                Hide controls
-              </button>
-            </div>
-
-            <div className="share-config-card">
-              <ShareControls
+        <div
+          className="wizard-progress"
+          aria-label={`Step ${wizardStep + 1} of ${totalSteps}`}
+        >
+          {Array.from({ length: totalSteps }, (_, index) => (
+            <span
+              className={index <= wizardStep ? "is-active" : ""}
+              key={index}
+            />
+          ))}
+        </div>
+        <article className="wizard-card">
+          <header className="wizard-card__header">
+            <p className="step-label">
+              {page === "deep"
+                ? "SEND A DEEP CONNECTION REQUEST"
+                : "SEND AN ICEBREAKER"}
+            </p>
+            <h1>{titles[wizardStep]}</h1>
+          </header>
+          <div className="wizard-card__body">
+            {wizardStep === 0 && (
+              <OpennessControl
                 settings={settings}
                 onChange={updateSettings}
               />
-            </div>
-
-            {shareFlow === "deep" && (
+            )}
+            {page === "quick" && wizardStep === 1 && (
+              <IntentControl settings={settings} onChange={updateSettings} />
+            )}
+            {page === "quick" && wizardStep === 2 && (
+              <div className="wizard-review">
+                <SparkControl settings={settings} onChange={updateSettings} />
+                <VisualCard profile={reviewProfile} />
+                <a className="text-link" href="/profile/setup">
+                  Edit my saved profile →
+                </a>
+              </div>
+            )}
+            {page === "deep" && wizardStep === 1 && (
               <DeepShareControls
                 profile={deepProfile}
                 quickSettings={settings}
                 preferences={deepPreferences}
                 onChange={updateDeepPreferences}
+                stage="mode"
               />
             )}
-
-            <div className="share-generate-row">
-              <div>
-                <strong>Review complete?</strong>
-                <span>
-                  The QR appears only after you confirm these controls.
-                </span>
-              </div>
-              <button
-                className="button button--primary"
-                type="button"
-                onClick={() => void generateShare(true)}
-                disabled={
-                  !profile.name.trim() ||
-                  (shareFlow === "deep" && !deepProfile) ||
-                  (shareFlow === "deep" &&
-                    deepPreferences.mode === "agent-readable" &&
-                    !deepPreferences.agentReadableAccepted)
-                }
-              >
-                Generate QR to scan ↗
-              </button>
-            </div>
-
-            {shareReady && (
-              <div className="share-output" id="share-studio">
-                <div className="section-heading section-heading--compact">
-                  <div>
-                    <p className="step-label">READY FOR THE RECEIVER</p>
-                    <h2>Show this QR for them to scan.</h2>
-                  </div>
-                  <span className="payload-meter">
-                    {shareUrl.length} characters · {sessionStatus}
-                  </span>
+            {page === "deep" && wizardStep === 2 && (
+              <DeepShareControls
+                profile={deepProfile}
+                quickSettings={settings}
+                preferences={deepPreferences}
+                onChange={updateDeepPreferences}
+                stage="content"
+              />
+            )}
+            {page === "deep" && wizardStep === 3 && (
+              <DeepShareControls
+                profile={deepProfile}
+                quickSettings={settings}
+                preferences={deepPreferences}
+                onChange={updateDeepPreferences}
+                stage="access"
+              />
+            )}
+            {page === "deep" && wizardStep === 4 && (
+              <DeepShareControls
+                profile={deepProfile}
+                quickSettings={settings}
+                preferences={deepPreferences}
+                onChange={updateDeepPreferences}
+                stage="review"
+              />
+            )}
+            {isQrStep && shareReady && (
+              <div className="wizard-qr">
+                <div className="qr-frame">
+                  <QRCode
+                    value={shareUrl}
+                    size={256}
+                    level="M"
+                    bgColor="#ffffff"
+                    fgColor="#101114"
+                    aria-label="QR code for this Icebreaker profile"
+                  />
                 </div>
-                <div className="share-studio">
-                  <div className="share-studio__qr">
-                    <div className="qr-frame">
-                      <QRCode
-                        value={shareUrl}
-                        size={256}
-                        level="M"
-                        bgColor="#ffffff"
-                        fgColor="#101114"
-                        aria-label="QR code for this Icebreaker profile"
-                      />
-                    </div>
-                    <div>
-                      <h3>Scan with any phone camera</h3>
-                      <p>
-                        No app or login. The profile opens as a normal web link.
-                      </p>
-                    </div>
-                    <div className="button-row">
-                      <button
-                        className="button button--primary"
-                        type="button"
-                        onClick={shareProfile}
-                      >
-                        Share profile
-                      </button>
-                      <CopyButton label="Copy link" value={shareUrl} />
-                      {activeSessionKind && (
-                        <button
-                          className="button button--quiet"
-                          type="button"
-                          onClick={() => void revokeDeepAccess()}
-                        >
-                          Revoke Deep access
-                        </button>
-                      )}
-                    </div>
-                  </div>
-
-                  <div className="share-studio__card">
-                    <VisualCard profile={generated} />
-                    <DownloadCardButton profile={generated} />
-                    <p className="microcopy">
-                      Save the card as an offline backup or lock-screen image.
-                    </p>
-                  </div>
+                <p className="payload-meter">{sessionStatus}</p>
+                <div className="button-row">
+                  <button
+                    className="button button--primary"
+                    type="button"
+                    onClick={shareProfile}
+                  >
+                    Share profile
+                  </button>
+                  <CopyButton label="Copy link" value={shareUrl} />
+                  {activeSessionKind && (
+                    <button
+                      className="button button--quiet"
+                      type="button"
+                      onClick={() => void revokeDeepAccess()}
+                    >
+                      Revoke Deep access
+                    </button>
+                  )}
                 </div>
-
-                <div className="fallback-grid fallback-grid--compact">
-                  <details>
-                    <summary>Shareable URL</summary>
-                    <code>{shareUrl}</code>
-                    <CopyButton
-                      label="Copy share URL"
-                      value={shareUrl}
-                      variant="quiet"
-                    />
-                  </details>
-                  <details>
-                    <summary>Connection String fallback</summary>
-                    <pre>{connectionString}</pre>
-                    <CopyButton
-                      label="Copy Connection String"
-                      value={connectionString}
-                      variant="quiet"
-                    />
-                  </details>
-                </div>
+                <details className="wizard-backup">
+                  <summary>Backup sharing options</summary>
+                  <code>{shareUrl}</code>
+                  <CopyButton
+                    label="Copy Connection String"
+                    value={connectionString}
+                    variant="quiet"
+                  />
+                </details>
               </div>
             )}
           </div>
-        </section>
-      )}
-
-      <section className="builder-section">
-        <div className="shell compact-builder">
-          <ProfileSetup
-            profile={profile}
-            onChange={updateProfile}
-            onFinish={() => selectShareFlow("quick")}
-            saveState={saveState}
-          />
-
-          <article className="deep-connect-invite">
-            <div>
-              <p className="step-label">OPTIONAL DEEP CONNECT</p>
-              <h2>Want someone to know the story behind the signal?</h2>
-              <p>
-                Create a separate Personal Wiki, approve it section by section,
-                and decide when a QR should unlock it.
-              </p>
-            </div>
-            <a className="button button--secondary" href="/deep/setup">
-              Create my Connection Story
-            </a>
-          </article>
-        </div>
+          {!isQrStep && (
+            <footer className="wizard-actions">
+              <button
+                className="button button--quiet"
+                type="button"
+                onClick={previousStep}
+                disabled={wizardStep === 0}
+              >
+                Back
+              </button>
+              {isReviewStep ? (
+                <button
+                  className="button button--primary"
+                  type="button"
+                  onClick={() => void generateShare()}
+                  disabled={!canGenerate}
+                >
+                  Generate QR to scan →
+                </button>
+              ) : (
+                <button
+                  className="button button--primary"
+                  type="button"
+                  onClick={() => setWizardStep((current) => current + 1)}
+                >
+                  Continue →
+                </button>
+              )}
+            </footer>
+          )}
+        </article>
       </section>
-
       <SiteFooter />
     </main>
   );
@@ -1207,8 +1246,10 @@ export function SiteFooter() {
 
 export function IcebreakerApp({
   mode,
+  page = "home",
 }: {
   mode: "sender" | "receiver";
+  page?: SenderPage;
 }) {
-  return mode === "receiver" ? <ReceiverMode /> : <SenderMode />;
+  return mode === "receiver" ? <ReceiverMode /> : <SenderMode page={page} />;
 }

@@ -32,16 +32,41 @@ test("server-renders the Event Icebreaker sender experience", async () => {
   assert.match(html, /Skip the small talk\./);
   assert.match(html, /Send an Icebreaker/);
   assert.match(html, /Send a Deep Connection Request/);
+  assert.match(html, /href="\/send\/icebreaker"/);
+  assert.match(html, /href="\/send\/deep"/);
   assert.doesNotMatch(html, /Generate QR to scan/);
-  assert.match(html, /YOUR FIVE-QUESTION SETUP/);
+  assert.doesNotMatch(html, /YOUR FIVE-QUESTION SETUP/);
+  assert.doesNotMatch(html, /ICEBREAKER CONTROLS/);
   assert.match(html, /60-sec demo/);
   assert.doesNotMatch(html, /Connection String fallback/);
-  assert.match(html, /Stefano/);
   assert.doesNotMatch(html, /\bJames\b/);
-  assert.match(html, /Emergency management strategist/);
   assert.doesNotMatch(html, /Private equity operator/);
   assert.match(html, /og:image/);
   assert.doesNotMatch(html, /codex-preview|react-loading-skeleton/i);
+});
+
+test("server-renders a focused Icebreaker wizard route", async () => {
+  const response = await render("/send/icebreaker");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /SEND AN ICEBREAKER/);
+  assert.match(html, /Step 1 of 4/);
+  assert.match(html, /How much would you like to share\?/);
+  assert.doesNotMatch(html, /Send a Deep Connection Request/);
+  assert.doesNotMatch(html, /Generate QR to scan/);
+  assert.doesNotMatch(html, /YOUR FIVE-QUESTION SETUP/);
+});
+
+test("server-renders a focused Deep Connection setup route", async () => {
+  const response = await render("/send/deep");
+  assert.equal(response.status, 200);
+
+  const html = await response.text();
+  assert.match(html, /DEEP CONNECTION SETUP/);
+  assert.match(html, /Create your Connection Story first\./);
+  assert.doesNotMatch(html, /Send an Icebreaker/);
+  assert.doesNotMatch(html, /Generate QR to scan/);
 });
 
 test("server-renders receiver recovery without requiring profile data", async () => {

@@ -39,11 +39,13 @@ export function DeepShareControls({
   quickSettings,
   preferences,
   onChange,
+  stage,
 }: {
   profile: DeepProfile | null;
   quickSettings: ShareSettings;
   preferences: DeepSharePreferences;
   onChange: (next: DeepSharePreferences) => void;
+  stage: "mode" | "content" | "access" | "review";
 }) {
   const preview = useMemo(() => {
     if (!profile || preferences.mode === "quick") return null;
@@ -93,159 +95,149 @@ export function DeepShareControls({
 
   return (
     <article className="deep-share-panel">
-      <div className="deep-share-panel__heading">
-        <div>
-          <p className="step-label">CONNECTION DEPTH</p>
-          <h2>Choose what this QR can unlock.</h2>
-          <p>
-            The {quickSettings.openness} openness and {quickSettings.intent}{" "}
-            intent selected above apply here too.
-          </p>
-        </div>
+      <div className="deep-share-panel__utility">
+        <p>
+          {quickSettings.openness} openness · {quickSettings.intent} intent
+        </p>
         <Link className="text-link" href="/deep/setup">
           Edit Personal Wiki →
         </Link>
       </div>
 
-      <div className="deep-mode-grid">
-        {DEEP_MODES.map((mode) => (
-          <button
-            className={preferences.mode === mode ? "is-active" : ""}
-            type="button"
-            key={mode}
-            aria-pressed={preferences.mode === mode}
-            onClick={() =>
-              update({
-                mode,
-                ...(mode === "agent-readable" &&
-                preferences.mode !== "agent-readable"
-                  ? { agentReadableAccepted: false }
-                  : {}),
-              })
-            }
-          >
-            <strong>{MODE_COPY[mode].label}</strong>
-            <span>{MODE_COPY[mode].description}</span>
-          </button>
-        ))}
-      </div>
+      {stage === "mode" && (
+        <div className="deep-mode-grid">
+          {DEEP_MODES.map((mode) => (
+            <button
+              className={preferences.mode === mode ? "is-active" : ""}
+              type="button"
+              key={mode}
+              aria-pressed={preferences.mode === mode}
+              onClick={() =>
+                update({
+                  mode,
+                  ...(mode === "agent-readable" &&
+                  preferences.mode !== "agent-readable"
+                    ? { agentReadableAccepted: false }
+                    : {}),
+                })
+              }
+            >
+              <strong>{MODE_COPY[mode].label}</strong>
+              <span>{MODE_COPY[mode].description}</span>
+            </button>
+          ))}
+        </div>
+      )}
 
-      {preferences.mode !== "quick" && (
+      {stage === "content" && (
+        <fieldset>
+          <legend>Approved sections for this share</legend>
+          <div className="deep-section-checks">
+            {profile.sections.map((section) => (
+              <label
+                className={!section.approved ? "is-unavailable" : ""}
+                key={section.id}
+              >
+                <input
+                  type="checkbox"
+                  checked={preferences.includedSectionIds.includes(section.id)}
+                  disabled={!section.approved}
+                  onChange={() => toggleSection(section.id)}
+                />
+                <span>{DEEP_SECTION_LABELS[section.id]}</span>
+                <small>{section.minOpenness}+</small>
+              </label>
+            ))}
+          </div>
+        </fieldset>
+      )}
+
+      {stage === "access" && (
         <>
           {preferences.mode === "agent-readable" && (
             <div className="deep-privacy-warning" role="note">
               <strong>Privacy exception</strong>
               <span>
-                This mode stores a filtered readable snapshot until it expires.
-                Use Private Deep unless an AI must open the link itself.
+                This stores the filtered snapshot in readable form until the
+                link expires.
               </span>
               <label className="agent-readable-consent">
                 <input
                   type="checkbox"
                   checked={preferences.agentReadableAccepted}
                   onChange={(event) =>
-                    update({
-                      agentReadableAccepted: event.target.checked,
-                    })
+                    update({ agentReadableAccepted: event.target.checked })
                   }
                 />
                 <span>
-                  I understand that anyone or any AI with this temporary link
-                  can read the exact preview below until it expires or I revoke
-                  it.
+                  I understand anyone or any AI with this temporary link can
+                  read the approved preview until it expires or I revoke it.
                 </span>
               </label>
             </div>
           )}
-
-          <div className="deep-share-options">
-            <fieldset>
-              <legend>Approved sections for this share</legend>
-              <div className="deep-section-checks">
-                {profile.sections.map((section) => (
-                  <label
-                    className={!section.approved ? "is-unavailable" : ""}
-                    key={section.id}
-                  >
-                    <input
-                      type="checkbox"
-                      checked={preferences.includedSectionIds.includes(
-                        section.id,
-                      )}
-                      disabled={!section.approved}
-                      onChange={() => toggleSection(section.id)}
-                    />
-                    <span>{DEEP_SECTION_LABELS[section.id]}</span>
-                    <small>{section.minOpenness}+</small>
-                  </label>
-                ))}
-              </div>
-            </fieldset>
-
-            <div className="deep-category-toggles">
-              <label className="toggle-row toggle-row--compact">
-                <span>
-                  <strong>Social links</strong>
-                  <small>Off by default regardless of openness</small>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={preferences.includeSocialLinks}
-                  onChange={(event) =>
-                    update({ includeSocialLinks: event.target.checked })
-                  }
-                />
-              </label>
-              <label className="toggle-row toggle-row--compact">
-                <span>
-                  <strong>Contact links</strong>
-                  <small>Shared only through this explicit switch</small>
-                </span>
-                <input
-                  type="checkbox"
-                  checked={preferences.includeContactLinks}
-                  onChange={(event) =>
-                    update({ includeContactLinks: event.target.checked })
-                  }
-                />
-              </label>
-              <label className="deep-expiry">
-                <span>Deep access expires</span>
-                <select
-                  value={preferences.expiry}
-                  onChange={(event) =>
-                    update({
-                      expiry: event.target
-                        .value as DeepSharePreferences["expiry"],
-                    })
-                  }
-                >
-                  <option value="one-hour">In one hour</option>
-                  <option value="tonight">End of today</option>
-                  <option value="seven-days">In seven days</option>
-                </select>
-              </label>
-            </div>
-          </div>
-
-          <details className="deep-disclosure-preview">
-            <summary>
-              Exact disclosure preview
+          <div className="deep-category-toggles">
+            <label className="toggle-row toggle-row--compact">
               <span>
-                {preview?.sections.length ?? 0} sections ·{" "}
-                {preview?.links?.length ?? 0} links
+                <strong>Social links</strong>
+                <small>Off unless you explicitly include them</small>
               </span>
-            </summary>
-            {preview ? (
-              <DeepProfilePage snapshot={preview} preview />
-            ) : (
-              <p>
-                No approved sections match these openness, intent, and category
-                settings.
-              </p>
-            )}
-          </details>
+              <input
+                type="checkbox"
+                checked={preferences.includeSocialLinks}
+                onChange={(event) =>
+                  update({ includeSocialLinks: event.target.checked })
+                }
+              />
+            </label>
+            <label className="toggle-row toggle-row--compact">
+              <span>
+                <strong>Contact links</strong>
+                <small>Off unless you explicitly include them</small>
+              </span>
+              <input
+                type="checkbox"
+                checked={preferences.includeContactLinks}
+                onChange={(event) =>
+                  update({ includeContactLinks: event.target.checked })
+                }
+              />
+            </label>
+            <label className="deep-expiry">
+              <span>Deep access expires</span>
+              <select
+                value={preferences.expiry}
+                onChange={(event) =>
+                  update({
+                    expiry: event.target
+                      .value as DeepSharePreferences["expiry"],
+                  })
+                }
+              >
+                <option value="one-hour">In one hour</option>
+                <option value="tonight">End of today</option>
+                <option value="seven-days">In seven days</option>
+              </select>
+            </label>
+          </div>
         </>
+      )}
+
+      {stage === "review" && (
+        <div className="deep-disclosure-preview deep-disclosure-preview--open">
+          <div className="deep-review-count">
+            Exact disclosure · {preview?.sections.length ?? 0} sections ·{" "}
+            {preview?.links?.length ?? 0} links
+          </div>
+          {preview ? (
+            <DeepProfilePage snapshot={preview} preview />
+          ) : (
+            <p>
+              No approved sections match these openness, intent, and category
+              settings.
+            </p>
+          )}
+        </div>
       )}
     </article>
   );
