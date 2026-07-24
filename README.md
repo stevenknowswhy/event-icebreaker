@@ -22,6 +22,24 @@ fallback, and receiver-controlled Mutual Connect.
 - There is no login, analytics, exposed API key, contact harvesting, or
   persistent connection history.
 
+## AI writing assistant
+
+Personal Wiki sections now include an optional, field-level writing assistant:
+
+- **Rewrite draft** sends only the active section to Parasail and keeps the
+  original unchanged until the user accepts the proposal.
+- **Verify & enrich** requires a separate permission checkbox and one to five
+  approved HTTPS sources before calling You.com Research.
+- Research results are review-only and are never added to the profile
+  automatically.
+
+Provider credentials stay in the secure endpoint. Copy `.env.example` for
+local configuration. `render.yaml` defines the standalone Render service; set
+`AI_ALLOWED_ORIGIN` to the published Event Icebreaker origin. If that service is
+hosted separately, build the site with `NEXT_PUBLIC_AI_WRITER_URL` set to its
+origin. Without provider credentials, profile editing continues to work and AI
+actions show a configuration message.
+
 ## Routes
 
 - `/` — Sender Mode

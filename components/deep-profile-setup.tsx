@@ -24,6 +24,7 @@ import {
   DEEP_SECTION_LABELS,
   DeepProfilePage,
 } from "./deep-profile-page";
+import { AiWritingAssistant } from "./ai-writing-assistant";
 
 const QUICK_STORAGE_KEY = "event-icebreaker.profile.v1";
 const ALL_INTENTS: Intent[] = [
@@ -251,6 +252,12 @@ export function DeepProfileSetup() {
                       }
                     />
                   </label>
+                  <AiWritingAssistant
+                    section={section.id}
+                    sectionLabel={DEEP_SECTION_LABELS[section.id]}
+                    text={section.body}
+                    onAccept={(body) => updateSection(section.id, { body })}
+                  />
                   <label>
                     <span>Highlights</span>
                     <input

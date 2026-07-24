@@ -1,0 +1,23 @@
+services:
+  - type: web
+    name: event-icebreaker-ai
+    runtime: node
+    plan: free
+    buildCommand: npm ci --omit=dev
+    startCommand: node --experimental-strip-types services/ai-writer/server.ts
+    healthCheckPath: /health
+    envVars:
+      - key: NODE_VERSION
+        value: 22.22.0
+      - key: PARASAIL_API_KEY
+        sync: false
+      - key: PARASAIL_MODEL
+        value: parasail-llama-33-70b-fp8
+      - key: PARASAIL_BASE_URL
+        value: https://api.parasail.io/v1
+      - key: YDC_API_KEY
+        sync: false
+      - key: YDC_BASE_URL
+        value: https://api.you.com
+      - key: AI_ALLOWED_ORIGIN
+        sync: false

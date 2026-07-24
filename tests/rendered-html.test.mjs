@@ -95,6 +95,10 @@ test("server-renders the optional Personal Wiki builder separately", async () =>
   assert.match(html, /Created separately from your Quick Connect card/);
   assert.match(html, /Preview as the receiver/);
   assert.match(html, /Back to Quick Connect/);
+  assert.match(html, /Improve with AI/);
+  assert.match(html, /Only this section is sent when you choose an AI action/);
+  assert.doesNotMatch(html, /Parasail receives this draft/);
+  assert.doesNotMatch(html, /You\.com may review/);
 });
 
 test("server-renders the hybrid receiver before client-side decoding", async () => {
