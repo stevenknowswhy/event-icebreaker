@@ -1,8 +1,7 @@
 # Local Preflight — Not Opsera Evidence
 
 Date: 2026-07-24
-Repository base: `731f6e5264412e24638930662ccc6b11c7f7da9f` plus the final
-Warm Path deployment changes
+Deployed repository commit: `c92e846b7c3d53d40a246f56bce88707b5bf93bc`
 
 This record is a local engineering preflight. It does not replace the Opsera
 execution IDs and exported reports required in `docs/opsera/README.md`.
@@ -19,8 +18,13 @@ execution IDs and exported reports required in `docs/opsera/README.md`.
 | Sender/receiver mobile flow | pass; 0 console issues |
 | Warm Path + approved action mobile flow | pass; 0 console issues |
 | Python locked dependency graph | resolves successfully |
-| Gitleaks full-history scan | pass; 18 commits, no secrets |
+| Gitleaks full-history scan | pass; 23 locally reachable commits, no secrets |
 | Whitespace/diff check | pass |
+| Sites production deployment | version 9; pass |
+| Public page routes | 4 of 4 return HTTP 200 |
+| Public sender/receiver regression | pass; 0 console issues |
+| Public live Warm Path run | pass; 1 cited result, 5 workflow roles, 0 console issues |
+| Production visual review | mobile and desktop pass; no launch blocker |
 
 Registry-backed vulnerability audits were not rerun during this session.
 Opsera must still perform and record the independent architecture and security

@@ -2,7 +2,10 @@
 
 ## Before judges arrive
 
-1. Open `/receive` with a prepared opt-in card and `/warm-path` in separate
+1. Open
+   `https://event-icebreaker.stefano94103.chatgpt.site/receive` with a prepared
+   opt-in card and
+   `https://event-icebreaker.stefano94103.chatgpt.site/warm-path` in separate
    mobile-sized tabs.
 2. Confirm the prepared card uses simulated/demo-safe data or a participant who
    explicitly agreed.
@@ -11,6 +14,9 @@
 5. Keep “Load a cited demo” available as the clearly labeled outage fallback.
 6. Open the latest Opsera architecture and security reports from
    `docs/opsera/evidence/`.
+
+Production baseline: Sites version 9, source commit
+`c92e846b7c3d53d40a246f56bce88707b5bf93bc`.
 
 ## Script
 

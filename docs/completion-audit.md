@@ -50,6 +50,7 @@ connected account, deployed environment, or provider credits.
 | Production service authentication is mandatory | Verified | production-mode service test and Render blueprint |
 | Research requests are rate- and size-limited | Verified | proxy and FastAPI boundary tests |
 | Framework telemetry is disabled | Verified | service bootstrap and deployment environment |
+| Public web deployment serves the complete Warm Path experience | Verified live | Sites version 9, deployment `appgdep_6a63fd8c815881918b355b5d596b63e0`; all four page routes returned 200 |
 | Architecture and security scans have Opsera execution IDs | External | connect Opsera and run the prepared work orders in `docs/opsera/` |
 
 ## Executed local gates
@@ -64,10 +65,22 @@ connected account, deployed environment, or provider credits.
 - Browser console warnings/errors: zero.
 - The locked Python dependency graph resolved successfully. Registry-backed
   vulnerability audits were not rerun during this session.
-- Gitleaks scanned all 18 commits with the repository policy and found no
+- Gitleaks scanned all 23 locally reachable commits with the repository policy and found no
   secrets. The policy narrowly identifies synthetic Deep Connect URL tokens
   used only in contract tests.
 
-The service and live You.com + Parasail path are proven. Production/demo
-sign-off still requires the public web deployment and the two Opsera execution
-records.
+## Executed production gates
+
+- Sites version 9 deployed commit
+  `c92e846b7c3d53d40a246f56bce88707b5bf93bc` to
+  `https://event-icebreaker.stefano94103.chatgpt.site`.
+- `/`, `/receive`, `/circle`, and `/warm-path` returned HTTP 200.
+- The public sender, receiver, and invalid-link recovery flows passed with zero
+  browser console issues.
+- A public Warm Path run returned one cited result, displayed all five workflow
+  roles, and produced zero browser console issues.
+- Mobile and desktop production reviews found no launch-blocking presentation
+  defect.
+
+The deployed service and public You.com + Parasail experience are proven.
+Production governance sign-off still requires the two Opsera execution records.
