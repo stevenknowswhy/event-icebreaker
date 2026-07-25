@@ -44,6 +44,7 @@ page.on("pageerror", (error) => issues.push(`pageerror: ${error.message}`));
 try {
   let approvedAction;
   await page.route("**/api/warm-paths", async (route) => {
+    await new Promise((resolve) => setTimeout(resolve, 300));
     await route.fulfill({
       status: 200,
       contentType: "application/json",
@@ -145,6 +146,17 @@ try {
   );
 
   await page.getByRole("button", { name: "Research Warm Paths" }).click();
+  const progress = page.getByRole("status", {
+    name: "Live research progress",
+  });
+  await progress.waitFor();
+  assert.match((await progress.textContent()) ?? "", /Researching target/);
+  assert.match((await progress.textContent()) ?? "", /Estimated stage/);
+  await mkdir("artifacts", { recursive: true });
+  await page.screenshot({
+    path: "artifacts/warm-path-progress-mobile.png",
+    fullPage: true,
+  });
   await page
     .getByRole("heading", { name: "1 human path to Elena Park." })
     .waitFor();
@@ -162,7 +174,6 @@ try {
     .getByLabel(/I reviewed the recipient, subject, and exact message above/)
     .check();
   assert.equal(await send.isEnabled(), true);
-  await mkdir("artifacts", { recursive: true });
   await page.screenshot({
     path: "artifacts/warm-path-action-mobile.png",
     fullPage: true,
@@ -177,6 +188,9 @@ try {
     approved: true,
   });
   assert.equal(await page.locator(".workflow-receipt li").count(), 5);
+  const liveMetrics = page.locator(".workflow-receipt__metrics dd");
+  assert.equal(await liveMetrics.nth(0).textContent(), "1s");
+  assert.equal(await liveMetrics.nth(1).textContent(), "1");
 
   await page.getByRole("button", { name: "Load a cited demo" }).click();
   await page.getByRole("heading", { name: "2 human paths to Elena Park." }).waitFor();
@@ -192,6 +206,9 @@ try {
       "",
     /CITED DEMO · SIMULATED PEOPLE/,
   );
+  const demoMetrics = page.locator(".workflow-receipt__metrics dd");
+  assert.equal(await demoMetrics.nth(0).textContent(), "Demo fixture");
+  assert.equal(await demoMetrics.nth(1).textContent(), "4");
 
   await page
     .getByRole("button", { name: "Copy introduction request" })
@@ -207,6 +224,48 @@ try {
     path: "artifacts/warm-path-mobile.png",
     fullPage: true,
   });
+
+  const emptyContext = await browser.newContext({
+    viewport: { width: 320, height: 844 },
+  });
+  const emptyPage = await emptyContext.newPage();
+  emptyPage.on("console", (message) => {
+    if (message.type() === "error" || message.type() === "warning") {
+      issues.push(`empty ${message.type()}: ${message.text()}`);
+    }
+  });
+  emptyPage.on("pageerror", (error) =>
+    issues.push(`empty pageerror: ${error.message}`),
+  );
+  await emptyPage.goto(`${origin}/warm-path`, { waitUntil: "networkidle" });
+  await emptyPage
+    .getByRole("heading", { name: "Your research-ready Circle is empty." })
+    .waitFor();
+  await emptyPage
+    .getByRole("button", { name: "Explore the cited demo" })
+    .click();
+  await emptyPage
+    .getByRole("heading", { name: "2 human paths to Elena Park." })
+    .waitFor();
+  const emptyDemoMetrics = emptyPage.locator(".workflow-receipt__metrics dd");
+  assert.equal(await emptyDemoMetrics.nth(0).textContent(), "Demo fixture");
+  assert.equal(await emptyDemoMetrics.nth(1).textContent(), "4");
+
+  for (const width of [320, 768, 1024, 1440]) {
+    await emptyPage.setViewportSize({ width, height: width < 768 ? 844 : 1100 });
+    assert.equal(
+      await emptyPage.evaluate(
+        () => document.documentElement.scrollWidth <= window.innerWidth,
+      ),
+      true,
+      `Warm Path should not overflow at ${width}px`,
+    );
+  }
+  await emptyPage.screenshot({
+    path: "artifacts/warm-path-demo-desktop.png",
+    fullPage: true,
+  });
+  await emptyContext.close();
 
   assert.deepEqual(issues, []);
   console.log(

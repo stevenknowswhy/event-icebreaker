@@ -4,7 +4,9 @@ import test from "node:test";
 
 import {
   DEMO_WARM_PATH_RESPONSE,
+  countWarmPathCitations,
   createWarmPathRequest,
+  estimatedResearchStage,
   parseWarmPathResponse,
 } from "../lib/warm-path.ts";
 
@@ -95,6 +97,7 @@ test("parses the demo response into citation-backed paths", () => {
   assert.equal(parsed.paths.length, 2);
   assert.equal(parsed.paths[0].strength, "strong");
   assert.equal(parsed.workflow.length, 5);
+  assert.equal(countWarmPathCitations(parsed), 4);
   assert.ok(
     parsed.paths.every((path) =>
       path.edges.every((edge) => edge.citations.length > 0),
@@ -126,6 +129,15 @@ test("rejects malformed targets and unsafe citation URLs", () => {
   response.paths[0].edges[0].citations[0].url = "javascript:alert(1)";
   const parsed = parseWarmPathResponse(response);
   assert.equal(parsed.paths.length, 1);
+});
+
+test("maps elapsed research time to honest estimated progress stages", () => {
+  assert.equal(estimatedResearchStage(0), "Researching target");
+  assert.equal(estimatedResearchStage(9_999), "Researching target");
+  assert.equal(estimatedResearchStage(10_000), "Scouting public paths");
+  assert.equal(estimatedResearchStage(24_999), "Scouting public paths");
+  assert.equal(estimatedResearchStage(25_000), "Auditing evidence");
+  assert.equal(estimatedResearchStage(120_000), "Auditing evidence");
 });
 
 test("shares one cross-service contract fixture with Pydantic", () => {

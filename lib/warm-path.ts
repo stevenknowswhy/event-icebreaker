@@ -67,6 +67,32 @@ export type WarmPathApiError = {
   };
 };
 
+export const RESEARCH_PROGRESS_STAGES = [
+  "Researching target",
+  "Scouting public paths",
+  "Auditing evidence",
+] as const;
+
+export function estimatedResearchStage(
+  elapsedMs: number,
+): (typeof RESEARCH_PROGRESS_STAGES)[number] {
+  if (elapsedMs < 10_000) return RESEARCH_PROGRESS_STAGES[0];
+  if (elapsedMs < 25_000) return RESEARCH_PROGRESS_STAGES[1];
+  return RESEARCH_PROGRESS_STAGES[2];
+}
+
+export function countWarmPathCitations(result: WarmPathResult): number {
+  return result.paths.reduce(
+    (total, path) =>
+      total +
+      path.edges.reduce(
+        (pathTotal, edge) => pathTotal + edge.citations.length,
+        0,
+      ),
+    0,
+  );
+}
+
 const URL_LIMIT = 2048;
 const TEXT_LIMIT = 800;
 const CONTROL_CHARACTERS = /[\u0000-\u0008\u000b\u000c\u000e-\u001f\u007f]/;

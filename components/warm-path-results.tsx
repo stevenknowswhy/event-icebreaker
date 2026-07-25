@@ -2,7 +2,18 @@
 
 import { useState } from "react";
 
-import type { WarmPathResult } from "../lib/warm-path";
+import {
+  countWarmPathCitations,
+  type WarmPathResult,
+} from "../lib/warm-path";
+
+function formatRunDuration(durationSeconds: number | null): string {
+  if (durationSeconds === null) return "Demo fixture";
+  if (durationSeconds < 60) return `${durationSeconds}s`;
+  const minutes = Math.floor(durationSeconds / 60);
+  const seconds = durationSeconds % 60;
+  return `${minutes}m ${seconds}s`;
+}
 
 function CopyIntroButton({ message }: { message: string }) {
   const [copied, setCopied] = useState(false);
@@ -143,10 +154,14 @@ function ApprovedSendPanel({
 export function WarmPathResults({
   result,
   isDemo,
+  durationSeconds,
 }: {
   result: WarmPathResult;
   isDemo: boolean;
+  durationSeconds: number | null;
 }) {
+  const citationCount = countWarmPathCitations(result);
+
   return (
     <section className="warm-path-results" aria-labelledby="results-heading">
       <div className="shell">
@@ -253,6 +268,19 @@ export function WarmPathResults({
             <div>
               <p className="step-label">INSPECTABLE RUN RECEIPT</p>
               <h3>Five bounded jobs produced typed artifacts.</h3>
+              <dl
+                className="workflow-receipt__metrics"
+                aria-label="Run metrics"
+              >
+                <div>
+                  <dt>Run time</dt>
+                  <dd>{formatRunDuration(isDemo ? null : durationSeconds)}</dd>
+                </div>
+                <div>
+                  <dt>Citations</dt>
+                  <dd>{citationCount}</dd>
+                </div>
+              </dl>
             </div>
             <ol>
               {result.workflow.map((step) => (

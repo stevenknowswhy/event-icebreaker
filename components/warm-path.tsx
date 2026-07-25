@@ -9,7 +9,9 @@ import {
 } from "../lib/my-circle";
 import {
   DEMO_WARM_PATH_RESPONSE,
+  RESEARCH_PROGRESS_STAGES,
   createWarmPathRequest,
+  estimatedResearchStage,
   parseWarmPathResponse,
   type WarmPathResult,
 } from "../lib/warm-path";
@@ -25,6 +27,46 @@ const AGENTS = [
   "Intro Strategist",
 ];
 
+function ResearchProgress({ stage }: { stage: string }) {
+  const activeIndex = RESEARCH_PROGRESS_STAGES.indexOf(
+    stage as (typeof RESEARCH_PROGRESS_STAGES)[number],
+  );
+
+  return (
+    <div
+      className="research-progress"
+      role="status"
+      aria-label="Live research progress"
+      aria-live="polite"
+    >
+      <p className="step-label">LIVE REQUEST · TYPICALLY 20–90 SEC</p>
+      <strong>{stage}</strong>
+      <ol>
+        {RESEARCH_PROGRESS_STAGES.map((label, index) => (
+          <li
+            className={
+              index < activeIndex
+                ? "is-complete"
+                : index === activeIndex
+                  ? "is-active"
+                  : ""
+            }
+            key={label}
+            aria-current={index === activeIndex ? "step" : undefined}
+          >
+            <span aria-hidden="true">{index < activeIndex ? "✓" : index + 1}</span>
+            {label}
+          </li>
+        ))}
+      </ol>
+      <p>
+        Estimated stage while one validated request completes. Results appear
+        only after evidence auditing.
+      </p>
+    </div>
+  );
+}
+
 export function WarmPath() {
   const [contacts, setContacts] = useState<CircleContact[]>([]);
   const [selectedIds, setSelectedIds] = useState<string[]>([]);
@@ -34,6 +76,10 @@ export function WarmPath() {
   const [state, setState] = useState<"idle" | "loading" | "result">("idle");
   const [error, setError] = useState("");
   const [isDemo, setIsDemo] = useState(false);
+  const [progressStage, setProgressStage] = useState(
+    estimatedResearchStage(0),
+  );
+  const [durationSeconds, setDurationSeconds] = useState<number | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -46,6 +92,22 @@ export function WarmPath() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  useEffect(() => {
+    if (state !== "loading") return;
+    const scoutingTimer = window.setTimeout(
+      () => setProgressStage(estimatedResearchStage(10_000)),
+      10_000,
+    );
+    const auditTimer = window.setTimeout(
+      () => setProgressStage(estimatedResearchStage(25_000)),
+      25_000,
+    );
+    return () => {
+      window.clearTimeout(scoutingTimer);
+      window.clearTimeout(auditTimer);
+    };
+  }, [state]);
 
   const eligibleContacts = useMemo(
     () => contacts.filter((contact) => Boolean(contact.profile.u)),
@@ -82,10 +144,13 @@ export function WarmPath() {
   }
 
   async function research() {
+    const startedAt = performance.now();
     try {
       setError("");
       setResult(null);
       setIsDemo(false);
+      setDurationSeconds(null);
+      setProgressStage(estimatedResearchStage(0));
       setState("loading");
       const request = createWarmPathRequest(
         targetUrl,
@@ -116,9 +181,13 @@ export function WarmPath() {
         throw new Error(message);
       }
       setResult(parseWarmPathResponse(body));
+      setDurationSeconds(
+        Math.max(1, Math.round((performance.now() - startedAt) / 1_000)),
+      );
       setState("result");
     } catch (caught) {
       setState("idle");
+      setDurationSeconds(null);
       setError(
         caught instanceof Error
           ? caught.message
@@ -130,6 +199,7 @@ export function WarmPath() {
   function loadDemo() {
     setError("");
     setIsDemo(true);
+    setDurationSeconds(null);
     setResult(parseWarmPathResponse(DEMO_WARM_PATH_RESPONSE));
     setState("result");
     window.setTimeout(() => {
@@ -167,6 +237,7 @@ export function WarmPath() {
               confirmedIds={confirmedIds}
               onSelect={select}
               onConfirm={confirm}
+              onLoadDemo={loadDemo}
             />
             <label className="warm-path-target">
               <span>Target investor or fund URL</span>
@@ -199,6 +270,9 @@ export function WarmPath() {
                 {error}
               </p>
             )}
+            {state === "loading" && (
+              <ResearchProgress stage={progressStage} />
+            )}
             <div className="button-row">
               <button
                 className="button button--primary"
@@ -223,13 +297,25 @@ export function WarmPath() {
           <aside className="agent-rail" aria-live="polite">
             <p className="step-label">THE RESEARCH CREW</p>
             <h2>Five jobs. One accountable answer.</h2>
-            <ol>
-              {AGENTS.map((agent, index) => (
-                <li className={state === "loading" ? "is-running" : ""} key={agent}>
-                  <span>0{index + 1}</span>
-                  <strong>{agent}</strong>
-                </li>
-              ))}
+            <ol className="agent-list">
+              {AGENTS.map((agent, index) => {
+                const activeAgentIndex =
+                  RESEARCH_PROGRESS_STAGES.indexOf(progressStage) + 1;
+                const statusClass =
+                  state !== "loading"
+                    ? ""
+                    : index < activeAgentIndex
+                      ? "is-complete"
+                      : index === activeAgentIndex
+                        ? "is-running"
+                        : "is-queued";
+                return (
+                  <li className={statusClass} key={agent}>
+                    <span>0{index + 1}</span>
+                    <strong>{agent}</strong>
+                  </li>
+                );
+              })}
             </ol>
             <p>
               Deterministic code—not an agent—enforces HTTPS URLs, citation
@@ -241,7 +327,11 @@ export function WarmPath() {
 
       {result && (
         <div id="warm-path-results">
-          <WarmPathResults result={result} isDemo={isDemo} />
+          <WarmPathResults
+            result={result}
+            isDemo={isDemo}
+            durationSeconds={durationSeconds}
+          />
         </div>
       )}
       <SiteFooter />

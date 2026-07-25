@@ -8,12 +8,14 @@ export function WarmPathPicker({
   confirmedIds,
   onSelect,
   onConfirm,
+  onLoadDemo,
 }: {
   contacts: CircleContact[];
   selectedIds: string[];
   confirmedIds: string[];
   onSelect: (contactId: string, selected: boolean) => void;
   onConfirm: (contactId: string, confirmed: boolean) => void;
+  onLoadDemo: () => void;
 }) {
   if (!contacts.length) {
     return (
@@ -23,8 +25,22 @@ export function WarmPathPicker({
           Save an Icebreaker card that includes a public professional URL, then
           return here.
         </p>
-        <a className="button button--secondary" href="/circle">
-          Open My Circle
+        <div className="warm-path-empty__demo">
+          <strong>No Circle setup required</strong>
+          <p>
+            Explore simulated people, public citations, and the complete
+            five-agent receipt now.
+          </p>
+          <button
+            className="button button--primary"
+            type="button"
+            onClick={onLoadDemo}
+          >
+            Explore the cited demo
+          </button>
+        </div>
+        <a className="text-link" href="/circle">
+          Open My Circle instead ↗
         </a>
       </div>
     );

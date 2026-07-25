@@ -78,6 +78,8 @@ test("server-renders the Warm Path research experience", async () => {
   assert.match(html, /Find the human path/);
   assert.match(html, /Target investor or fund URL/);
   assert.match(html, /Only selected contacts leave this device/);
+  assert.match(html, /Explore the cited demo/);
+  assert.match(html, /No Circle setup required/);
   assert.match(html, /Load a cited demo/);
   assert.match(html, /No scraped social graph/);
 });

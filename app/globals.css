@@ -1222,6 +1222,30 @@ summary {
   margin: 8px 0 18px;
 }
 
+.warm-path-empty__demo {
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  margin: 20px 0 16px;
+  padding: 20px 0;
+}
+
+.warm-path-empty__demo > strong {
+  color: var(--electric);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+}
+
+.warm-path-empty__demo > p {
+  margin-bottom: 14px;
+  max-width: 480px;
+}
+
+.warm-path-empty > .text-link {
+  color: rgba(255, 255, 255, 0.72);
+}
+
 .warm-path-target {
   display: grid;
   margin-top: 26px;
@@ -1279,6 +1303,66 @@ summary {
   padding: 12px;
 }
 
+.research-progress {
+  background: #0c0d10;
+  border: 1px solid rgba(223, 255, 0, 0.28);
+  border-radius: 14px;
+  margin-bottom: 20px;
+  padding: 18px;
+}
+
+.research-progress .step-label {
+  color: var(--electric);
+  margin-bottom: 8px;
+}
+
+.research-progress > strong {
+  display: block;
+  font-size: 20px;
+  letter-spacing: -0.025em;
+}
+
+.research-progress ol {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(3, 1fr);
+  list-style: none;
+  margin: 16px 0 12px;
+  padding: 0;
+}
+
+.research-progress li {
+  align-items: center;
+  border-top: 1px solid rgba(255, 255, 255, 0.1);
+  color: rgba(255, 255, 255, 0.38);
+  display: flex;
+  font-size: 10px;
+  gap: 7px;
+  line-height: 1.35;
+  padding-top: 9px;
+}
+
+.research-progress li > span {
+  font-family: var(--font-geist-mono), monospace;
+}
+
+.research-progress li.is-active,
+.research-progress li.is-complete {
+  color: #fff;
+}
+
+.research-progress li.is-active > span,
+.research-progress li.is-complete > span {
+  color: var(--electric);
+}
+
+.research-progress > p:last-child {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 10px;
+  line-height: 1.5;
+  margin: 0;
+}
+
 .agent-rail {
   position: sticky;
   top: 24px;
@@ -1294,14 +1378,14 @@ summary {
   margin: 0 0 26px;
 }
 
-.agent-rail ol {
+.agent-list {
   display: grid;
   list-style: none;
   margin: 0;
   padding: 0;
 }
 
-.agent-rail li {
+.agent-list li {
   align-items: center;
   border-top: 1px solid rgba(255, 255, 255, 0.09);
   display: grid;
@@ -1310,22 +1394,36 @@ summary {
   padding: 14px 0;
 }
 
-.agent-rail li > span {
+.agent-list li > span {
   color: rgba(255, 255, 255, 0.3);
   font-family: var(--font-geist-mono), monospace;
   font-size: 10px;
 }
 
-.agent-rail li.is-running > span {
+.agent-list li.is-running > span,
+.agent-list li.is-complete > span {
   color: var(--electric);
 }
 
-.agent-rail li.is-running > strong::after {
-  color: var(--electric);
-  content: " · queued";
+.agent-list li > strong::after {
   font-family: var(--font-geist-mono), monospace;
   font-size: 8px;
   text-transform: uppercase;
+}
+
+.agent-list li.is-running > strong::after {
+  color: var(--electric);
+  content: " · active";
+}
+
+.agent-list li.is-complete > strong::after {
+  color: rgba(223, 255, 0, 0.7);
+  content: " · complete";
+}
+
+.agent-list li.is-queued > strong::after {
+  color: rgba(255, 255, 255, 0.3);
+  content: " · queued";
 }
 
 .agent-rail > p:last-child {
@@ -1633,6 +1731,32 @@ summary {
   margin: 7px 0 0;
 }
 
+.workflow-receipt__metrics {
+  display: grid;
+  gap: 8px;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  margin: 18px 0 0;
+}
+
+.workflow-receipt__metrics > div {
+  border-left: 2px solid var(--electric);
+  padding-left: 10px;
+}
+
+.workflow-receipt__metrics dt {
+  color: rgba(255, 255, 255, 0.48);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 8px;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+}
+
+.workflow-receipt__metrics dd {
+  font-size: 18px;
+  font-weight: 800;
+  margin: 4px 0 0;
+}
+
 .workflow-receipt ol {
   display: grid;
   gap: 8px;
@@ -1872,6 +1996,10 @@ summary {
 
   .path-edge__nodes strong:last-child {
     text-align: left;
+  }
+
+  .research-progress ol {
+    grid-template-columns: 1fr;
   }
 }
 
