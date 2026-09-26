@@ -29,6 +29,7 @@ import { DemoMode } from "./demo-mode";
 import { MatchReadCard } from "./match-read-card";
 import { ProfileSetup } from "./profile-setup";
 import { SetupDoors } from "./setup-doors";
+import { useGuardrailAdvisories } from "./use-guardrail-advisories";
 
 const PROFILE_STORAGE_KEY = "event-icebreaker.profile.v1";
 const SETTINGS_STORAGE_KEY = "event-icebreaker.settings.v1";
@@ -524,6 +525,9 @@ function ReceiverMode() {
   // `match === null` renders as the loading card; the effect only sets state
   // when a request resolves, so re-decodes refresh in place.
   const [match, setMatch] = useState<MatchDossierResult | null>(null);
+  // Save-time guardrails track the draft while the wizard is open —
+  // advisory banners on flagged fields, never a save blocker.
+  const wizardAdvisories = useGuardrailAdvisories(draftProfile, wizardOpen);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -703,6 +707,7 @@ function ReceiverMode() {
                 <ProfileSetup
                   profile={draftProfile}
                   onChange={updateDraftProfile}
+                  advisories={wizardAdvisories}
                   onFinish={finishReceiverWizard}
                   saveState="Draft — saved when you finish"
                   finishLabel="Show my match read"

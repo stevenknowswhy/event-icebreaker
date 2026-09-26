@@ -2189,6 +2189,26 @@ summary {
   margin-top: 18px;
 }
 
+/* Per-field advisory banner (blueprint item 5) — same advisory accent as
+   .setup-advisories, sized down to sit under one input. */
+.field-advisory {
+  background: rgba(107, 97, 255, 0.14);
+  border: 1px solid rgba(107, 97, 255, 0.45);
+  border-radius: 10px;
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 12px;
+  line-height: 1.55;
+  padding: 8px 12px;
+}
+
+.field-advisory > span {
+  display: block;
+}
+
+.field-advisory > span + span {
+  margin-top: 4px;
+}
+
 .speed-review__footer {
   display: flex;
   justify-content: flex-end;
