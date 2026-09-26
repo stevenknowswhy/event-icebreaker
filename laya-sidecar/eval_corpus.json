@@ -1,0 +1,373 @@
+{
+  "description": "Hand-labeled profile pairs for the sidecar eval. Profiles use the app's SharedProfile short-key format (lib/icebreaker.ts). Labels are authored from the text: a label exists only where the pair makes the answer unambiguous. Pairs marked expected_escalated=true are deliberately ambiguous, sparse, or signal-free — the dossier should say so.",
+  "conventions": {
+    "shape": "one of peer|collab|mentor|investor|customer|unclear",
+    "goal_fit": "0 different, 1 partial, 2 aligned",
+    "offer_search_X": "true iff the person's listed skills directly serve the other's stated search",
+    "shared_interest": "exact interest listed by both, or 'none' when nothing is literally shared",
+    "curiosity_gap": "the interest listed only by person 1 that is furthest from person 2's world (labeled only when unambiguous)",
+    "omitted": "no label for that dimension on that pair — excluded from that dimension's accuracy"
+  },
+  "pairs": [
+    {
+      "id": "inv-01",
+      "sender": { "v": 1, "n": "Vera Holt", "o": 3, "i": "networking", "x": ["Venture Capital", "Climate Tech", "Artificial Intelligence"], "r": "Partner at a seed-stage climate fund", "h": "Seed capital, investor introductions, fundraising coaching", "q": "Founders applying AI to grid resilience or climate hardware", "va": ["Technical depth wins", "Speed matters"], "p": [0.7, 0.6, 0.5, 0.4, 0.6] },
+      "receiver": { "v": 1, "n": "Sam Okafor", "o": 4, "i": "networking", "x": ["Robotics", "Climate Hardware", "Artificial Intelligence"], "r": "Founder of a grid-optimization startup", "h": "Prototype iteration, ML pipeline design, hardware-software integration", "q": "Seed capital and climate-focused investors for our seed round", "va": ["Ship fast", "Field data first"], "p": [0.5, 0.5, 0.7, 0.6, 0.4] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Textbook investor-founder pair: her offer is his search; his offer does not serve her search (he is the object of it)."
+    },
+    {
+      "id": "inv-02",
+      "sender": { "v": 1, "n": "Priya Raman", "o": 3, "i": "networking", "x": ["Fintech", "Venture Capital", "Payments"], "r": "Principal at a fintech growth fund", "h": "Series A capital, banking partnerships, regulatory introductions", "q": "Post-launch fintech teams solving cross-border payments", "p": [0.6, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Diego Marín", "o": 4, "i": "networking", "x": ["Cross-border Payments", "Compliance", "API Design"], "r": "Co-founder of a remittance API company", "h": "Compliance architecture, payment rails integration, LatAm market entry", "q": "Growth-stage funding and banking partners in the US", "p": [0.5, 0.6, 0.5, 0.6, 0.5] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Clear two-way textual fit: her offer is his search."
+    },
+    {
+      "id": "inv-03",
+      "sender": { "v": 1, "n": "Marcus Webb", "o": 2, "i": "networking", "x": ["Venture Capital", "Developer Tools"], "r": "Partner at a devtools-focused seed fund", "h": "Pre-seed capital and portfolio community", "q": "Teams building for embedded developers", "p": [0.4, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Aiko Tanaka", "o": 3, "i": "networking", "x": ["Developer Tools", "Rust", "Open Source"], "r": "Building an open-source telemetry SDK", "h": "Rust performance work and SDK design", "q": "Pre-seed funding and design partners", "p": [0.5, 0.5, 0.6, 0.5, 0.5] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Sparse but crisp: capital offered for teams like hers."
+    },
+    {
+      "id": "inv-04",
+      "sender": { "v": 1, "n": "Elena Kovacs", "o": 4, "i": "networking", "x": ["Venture Capital", "BioTech", "Longevity"], "r": "General partner at a longevity biofund", "h": "Capital, lab partnerships, scientific advisory networks", "q": "Founders translating longevity research into products", "s": "Spending this year mapping the senolytics pipeline", "p": [0.6, 0.6, 0.4, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Tomás Silva", "o": 4, "i": "networking", "x": ["BioTech", "Drug Discovery", "Machine Learning"], "r": "CSO of a senolytics discovery startup", "h": "Assay design and discovery pipelines", "q": "Series A capital and pharma partnerships", "va": ["Rigor over hype"], "p": [0.5, 0.5, 0.6, 0.5, 0.6] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Rich profiles, unambiguous direction."
+    },
+    {
+      "id": "inv-05",
+      "sender": { "v": 1, "n": "Chidi Osei", "o": 3, "i": "networking", "x": ["Venture Capital", "Robotics", "Supply Chain"], "r": "Investor at an industrial robotics fund", "h": "Capital and factory pilot introductions", "q": "Warehouse automation teams ready for pilots", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Lena Fischer", "o": 4, "i": "networking", "x": ["Robotics", "Computer Vision", "Logistics"], "r": "CEO of a warehouse vision robotics company", "h": "Vision system deployment at scale", "q": "Pilot customers and Series B investors", "p": [0.6, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Both directions of the offer-search test are clearly asymmetric."
+    },
+    {
+      "id": "peer-01",
+      "sender": { "v": 1, "n": "Yuki Mori", "o": 4, "i": "networking", "x": ["Distributed Systems", "Rust", "Databases"], "r": "Staff engineer on a streaming database team", "h": "Distributed consensus and query planning", "q": "Peer conversations about building columnar storage engines", "va": ["Correctness first"], "p": [0.5, 0.6, 0.5, 0.5, 0.7] },
+      "receiver": { "v": 1, "n": "Owen Blake", "o": 4, "i": "networking", "x": ["Distributed Systems", "Databases", "Go"], "r": "Founding engineer at a time-series database startup", "h": "Storage engine internals and Go performance work", "q": "Other engineers who have scaled write-heavy systems", "p": [0.5, 0.5, 0.6, 0.6, 0.5] },
+      "expected": { "shape": "peer", "goal_fit": 2, "complementarity": "overlapping", "offer_search_1_to_2": true, "offer_search_2_to_1": true, "shared_interest": "Distributed Systems" },
+      "expected_escalated": false,
+      "note": "Two storage engineers; both offers serve both searches."
+    },
+    {
+      "id": "peer-02",
+      "sender": { "v": 1, "n": "Nadia Petrov", "o": 3, "i": "friendship", "x": ["Game Development", "Unity", "Procedural Generation"], "r": "Solo game developer", "h": "Unity tooling and level design", "q": "Other indie devs talking shop about procedural worlds", "p": [0.5, 0.5, 0.7, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Ravi Patel", "o": 3, "i": "friendship", "x": ["Game Development", "Shaders", "Unity"], "r": "Graphics programmer at an indie studio", "h": "Shader authoring and rendering pipelines", "q": "Indie devs who ship genre-bending mechanics", "p": [0.5, 0.6, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "peer", "goal_fit": 2, "complementarity": "identical", "shared_interest": "Game Development" },
+      "expected_escalated": false,
+      "note": "Same craft, same goals; offers overlap rather than complement."
+    },
+    {
+      "id": "peer-03",
+      "sender": { "v": 1, "n": "Carlos Mendes", "o": 4, "i": "networking", "x": ["Product Management", "Marketplaces", "Growth"], "r": "Product lead at a B2B marketplace", "h": "Marketplace liquidity playbooks and pricing experiments", "q": "PMs who have grown two-sided marketplaces from zero", "p": [0.6, 0.5, 0.5, 0.6, 0.5] },
+      "receiver": { "v": 1, "n": "Hannah Wu", "o": 4, "i": "networking", "x": ["Product Management", "Marketplaces", "Data Science"], "r": "Director of product at a logistics marketplace", "h": "Demand-side growth and marketplace data tooling", "q": "Peer discussion on driver-side liquidity in niche markets", "p": [0.5, 0.6, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "peer", "goal_fit": 2, "complementarity": "overlapping", "shared_interest": "Marketplaces" },
+      "expected_escalated": false,
+      "note": "Peer PMs with adjacent marketplace problems."
+    },
+    {
+      "id": "peer-04",
+      "sender": { "v": 1, "n": "Ibrahim Diallo", "o": 3, "i": "networking", "x": ["Cybersecurity", "Threat Intelligence", "Python"], "r": "Security researcher at a threat intel firm", "h": "Reverse engineering and detection engineering", "q": "Researchers tracking APT tooling", "p": [0.5, 0.5, 0.5, 0.6, 0.5] },
+      "receiver": { "v": 1, "n": "Maggie Tran", "o": 3, "i": "networking", "x": ["Cybersecurity", "Malware Analysis", "Python"], "r": "Malware analyst at an endpoint security company", "h": "Malware family analysis and sandbox tooling", "q": "Peer exchange on detection rule quality", "p": [0.6, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "peer", "goal_fit": 2, "complementarity": "overlapping", "shared_interest": "Cybersecurity" },
+      "expected_escalated": false,
+      "note": "Two security researchers."
+    },
+    {
+      "id": "peer-05",
+      "sender": { "v": 1, "n": "Sofia Ricci", "o": 4, "i": "networking", "x": ["Climate Policy", "Carbon Markets", "EU Regulation"], "r": "Policy advisor on carbon markets", "h": "EU carbon regulation analysis", "q": "Policy people navigating CBAM implementation", "va": ["Evidence over slogans"], "p": [0.5, 0.6, 0.4, 0.5, 0.6] },
+      "receiver": { "v": 1, "n": "Jonas Berg", "o": 4, "i": "networking", "x": ["Climate Policy", "Carbon Accounting", "Standards"], "r": "Carbon accounting lead at an emissions platform", "h": "Scope 3 accounting methodology", "q": "Policy folks who can explain CBAM timelines", "p": [0.5, 0.5, 0.6, 0.5, 0.5] },
+      "expected": { "shape": "peer", "goal_fit": 2, "complementarity": "overlapping", "shared_interest": "Climate Policy", "offer_search_2_to_1": true },
+      "expected_escalated": false,
+      "note": "He can explain CBAM timelines — that is literally her search."
+    },
+    {
+      "id": "collab-01",
+      "sender": { "v": 1, "n": "Ana Souza", "o": 4, "i": "networking", "x": ["Industrial Design", "Consumer Hardware", "Prototyping"], "r": "Industrial designer specializing in consumer devices", "h": "Product design, CAD, and design-for-manufacture", "q": "Engineers building consumer health devices who need design help", "va": ["Form follows evidence"], "p": [0.6, 0.5, 0.6, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Ken Watanabe", "o": 4, "i": "networking", "x": ["Embedded Systems", "Consumer Hardware", "Firmware"], "r": "Embedded engineer building a wearable health ring", "h": "Firmware, low-power design, sensor integration", "q": "A designer who can make the device feel human", "p": [0.5, 0.6, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "collab", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": true, "shared_interest": "Consumer Hardware" },
+      "expected_escalated": false,
+      "note": "Designer and firmware engineer on the same product category; each offer is the other's search."
+    },
+    {
+      "id": "collab-02",
+      "sender": { "v": 1, "n": "Noah Adler", "o": 3, "i": "networking", "x": ["Machine Learning", "NLP", "Data Engineering"], "r": "ML engineer focused on retrieval systems", "h": "RAG pipelines, embedding search, data cleaning at scale", "q": "Domain experts with proprietary text corpora", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Fatima Al-Rashid", "o": 3, "i": "networking", "x": ["Legal Tech", "Contract Law", "Data Privacy"], "r": "Founder digitizing contract review for mid-market legal teams", "h": "Deep contract corpus and legal workflow expertise", "q": "An ML partner to build retrieval over legal documents", "p": [0.6, 0.5, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "collab", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": true },
+      "expected_escalated": false,
+      "note": "Each is literally the other's stated need."
+    },
+    {
+      "id": "collab-03",
+      "sender": { "v": 1, "n": "Grace Lin", "o": 4, "i": "networking", "x": ["Sound Design", "Interactive Art", "WebGL"], "r": "Audio artist building interactive installations", "h": "Spatial audio and interactive sound", "q": "Creative technologists for gallery-scale installations", "va": ["Play is serious work"], "p": [0.6, 0.5, 0.6, 0.6, 0.4] },
+      "receiver": { "v": 1, "n": "Victor Osei-Bonsu", "o": 4, "i": "networking", "x": ["Creative Coding", "WebGL", "Installation Art"], "r": "Creative technologist producing museum installations", "h": "Real-time graphics and projection systems", "q": "Sound artists for a multi-room exhibition", "p": [0.5, 0.5, 0.6, 0.5, 0.6] },
+      "expected": { "shape": "collab", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": true, "shared_interest": "WebGL" },
+      "expected_escalated": false,
+      "note": "Mutually stated collaboration."
+    },
+    {
+      "id": "collab-04",
+      "sender": { "v": 1, "n": "Tom Becker", "o": 3, "i": "networking", "x": ["iOS Development", "Swift", "Design Systems"], "r": "Senior iOS engineer", "h": "SwiftUI architecture and app performance", "q": "Designers who ship production design systems", "p": [0.5, 0.5, 0.5, 0.6, 0.5] },
+      "receiver": { "v": 1, "n": "Amara Nwosu", "o": 3, "i": "networking", "x": ["Design Systems", "Figma", "Accessibility"], "r": "Product designer with a systems background", "h": "Design system architecture and accessible component design", "q": "iOS engineers implementing token-based systems", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "collab", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": true },
+      "expected_escalated": false,
+      "note": "Complementary crafts; goals partially align (both want design-system conversations, not the same outcome)."
+    },
+    {
+      "id": "collab-05",
+      "sender": { "v": 1, "n": "Leila Haddad", "o": 4, "i": "networking", "x": ["Computational Biology", "Genomics", "Python"], "r": "Computational biologist at a genomics institute", "h": "Variant interpretation pipelines", "q": "Software people who can productionize research code", "va": ["Reproducible or it didn't happen"], "p": [0.5, 0.6, 0.5, 0.5, 0.6] },
+      "receiver": { "v": 1, "n": "Oscar Lindqvist", "o": 4, "i": "networking", "x": ["Platform Engineering", "Python", "Research Software"], "r": "Platform engineer moving research code to production", "h": "Pipelines, containers, and reproducible workflows", "q": "Biologists with real analysis pain", "p": [0.5, 0.5, 0.6, 0.5, 0.6] },
+      "expected": { "shape": "collab", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": true, "shared_interest": "Python" },
+      "expected_escalated": false,
+      "note": "Textbook cross-domain collaboration."
+    },
+    {
+      "id": "mentor-01",
+      "sender": { "v": 1, "n": "Robert Fields", "o": 3, "i": "networking", "x": ["Entrepreneurship", "SaaS", "Fundraising"], "r": "Three-time founder, now advising early SaaS teams", "h": "Pricing, first sales hires, and fundraising narrative", "q": "First-time founders pricing their first enterprise deals", "p": [0.5, 0.6, 0.4, 0.5, 0.6] },
+      "receiver": { "v": 1, "n": "Tara Singh", "o": 4, "i": "networking", "x": ["SaaS", "Enterprise Sales", "Pricing"], "r": "First-time founder of an HR SaaS tool", "h": "Product prototyping and customer discovery", "q": "Advice on pricing our first enterprise contracts", "p": [0.5, 0.5, 0.6, 0.5, 0.5] },
+      "expected": { "shape": "mentor", "goal_fit": 2, "complementarity": "overlapping", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "stage_gap": "far" },
+      "expected_escalated": false,
+      "note": "Experienced founder advising a first-timer; her offer does not serve his search (he gives advice, not product)."
+    },
+    {
+      "id": "mentor-02",
+      "sender": { "v": 1, "n": "Diane Keller", "o": 3, "i": "networking", "x": ["UX Research", "Design Leadership", "Mentorship"], "r": "Former head of design, now coaching design leaders", "h": "Building research practices and coaching design managers", "q": "New design managers finding their footing", "p": [0.5, 0.5, 0.5, 0.6, 0.5] },
+      "receiver": { "v": 1, "n": "Peter Novak", "o": 4, "i": "networking", "x": ["UX Research", "User Interviews", "Service Design"], "r": "Newly promoted design manager at a fintech", "h": "Interview craft and journey mapping", "q": "Coaching on managing a research team of four", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "mentor", "goal_fit": 2, "complementarity": "overlapping", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "stage_gap": "adjacent" },
+      "expected_escalated": false,
+      "note": "Coach and new manager; one step apart."
+    },
+    {
+      "id": "mentor-03",
+      "sender": { "v": 1, "n": "Hiro Nakamura", "o": 2, "i": "networking", "x": ["Manufacturing", "Hardware Startups", "Operations"], "r": "Retried manufacturing executive", "h": "Factory sourcing and production scaling in Asia", "q": "Hardware founders scaling their first production run", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Bea Ortiz", "o": 3, "i": "networking", "x": ["Consumer Hardware", "Supply Chain"], "r": "Hardware founder shipping her first 10k units", "h": "Industrial design and crowdfunding", "q": "Someone who has run production in Shenzhen", "p": [0.5, 0.5, 0.6, 0.5, 0.5] },
+      "expected": { "shape": "mentor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "stage_gap": "far" },
+      "expected_escalated": false,
+      "note": "Clear stage gap; his experience is her search."
+    },
+    {
+      "id": "mentor-04",
+      "sender": { "v": 1, "n": "Angela Moreau", "o": 3, "i": "networking", "x": ["Journalism", "Editorial Leadership", "Media Ethics"], "r": "Former editor-in-chief at a national outlet", "h": "Editorial judgment and newsroom management", "q": "Journalists moving into editing roles", "p": [0.5, 0.5, 0.5, 0.5, 0.6] },
+      "receiver": { "v": 1, "n": "Sam Whitfield", "o": 3, "i": "networking", "x": ["Journalism", "Investigative Reporting"], "r": "Investigative reporter moving up to desk editor", "h": "Source development and long-form structure", "q": "Coaching on managing former peers", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "mentor", "goal_fit": 1, "complementarity": "overlapping", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "stage_gap": "adjacent" },
+      "expected_escalated": false,
+      "note": "Same field, one step up, explicit ask."
+    },
+    {
+      "id": "mentor-05",
+      "sender": { "v": 1, "n": "David Osei", "o": 3, "i": "networking", "x": ["Software Architecture", "Mentorship", "Cloud Infrastructure"], "r": "Distinguished engineer at a cloud provider", "h": "Distributed systems reviews and career mentorship for senior ICs", "q": "Staff engineers navigating the IC-to-architect fork", "p": [0.5, 0.5, 0.4, 0.5, 0.7] },
+      "receiver": { "v": 1, "n": "Ines Duarte", "o": 4, "i": "networking", "x": ["Distributed Systems", "Kubernetes", "Career Growth"], "r": "Staff platform engineer deciding between IC and management tracks", "h": "Cluster architecture and on-call culture", "q": "Mentorship from someone who chose the architect path", "p": [0.5, 0.6, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "mentor", "goal_fit": 2, "complementarity": "overlapping", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "stage_gap": "adjacent" },
+      "expected_escalated": false,
+      "note": "Explicit mentorship both describe."
+    },
+    {
+      "id": "cust-01",
+      "sender": { "v": 1, "n": "Nina Vasquez", "o": 3, "i": "networking", "x": ["Bookkeeping", "Small Business", "Fintech Tools"], "r": "Founder of a bookkeeping service for small businesses", "h": "Clean books, payroll setup, and quarterly tax prep", "q": "Owner-operated businesses drowning in receipts", "va": ["Boring reliability"], "p": [0.5, 0.5, 0.5, 0.5, 0.6] },
+      "receiver": { "v": 1, "n": "Harold Kim", "o": 4, "i": "networking", "x": ["Restaurants", "Hospitality", "Local Business"], "r": "Owner of two restaurant locations", "h": "Menu engineering and kitchen ops", "q": "Someone to untangle our books before tax season", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Service provider meets the exact customer she describes."
+    },
+    {
+      "id": "cust-02",
+      "sender": { "v": 1, "n": "Boris Ivanov", "o": 3, "i": "networking", "x": ["SEO", "Content Marketing", "B2B"], "r": "Runs a technical SEO consultancy", "h": "Technical audits and content strategy for dev-tool companies", "q": "Dev-tool startups with flat organic growth", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Carla Reyes", "o": 4, "i": "networking", "x": ["Developer Tools", "DevRel"], "r": "Head of marketing at a dev-tool startup", "h": "DevRel programs and launch strategy", "q": "Help getting organic pipeline off the ground", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Consultant and in-house marketer, service-for-cash."
+    },
+    {
+      "id": "cust-03",
+      "sender": { "v": 1, "n": "Wes Turner", "o": 3, "i": "networking", "x": ["Copywriting", "Brand Voice", "B2B"], "r": "Freelance brand copywriter", "h": "Website copy and brand voice guidelines", "q": "B2B teams rebranding this year", "p": [0.5, 0.5, 0.6, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Zoe chambers", "o": 3, "i": "networking", "x": ["B2B SaaS", "Brand", "Web Design"], "r": "Marketing lead at a B2B SaaS company rebranding in Q3", "h": "Campaign ops and web design", "q": "A writer who can nail a brand voice from scratch", "p": [0.5, 0.5, 0.5, 0.6, 0.5] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "overlapping", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Her offer is literally his search."
+    },
+    {
+      "id": "cust-04",
+      "sender": { "v": 1, "n": "Elliot Marsh", "o": 3, "i": "networking", "x": ["Office Design", "Workplace Strategy", "Architecture"], "r": "Workplace strategist at a design studio", "h": "Office layouts and hybrid-work strategy", "q": "Companies rethinking their office footprint", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Rosa Delgado", "o": 4, "i": "networking", "x": ["People Ops", "Hybrid Work", "Culture"], "r": "Head of people at a 200-person fintech", "h": "Culture programs and hybrid policy", "q": "Rethinking our HQ lease and layout next year", "p": [0.5, 0.6, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Provider-customer again, different industry."
+    },
+    {
+      "id": "cust-05",
+      "sender": { "v": 1, "n": "Gina Caruso", "o": 3, "i": "networking", "x": ["Recruiting", "Technical Hiring", "Startups"], "r": "Technical recruiter for seed-stage startups", "h": "Closing senior engineers and interview process design", "q": "Founders making their first engineering hires", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Ahmed Farouk", "o": 3, "i": "networking", "x": ["Startups", "Machine Learning"], "r": "Solo founder of an ML observability tool", "h": "Model training infrastructure", "q": "Two senior ML engineers for our founding team", "p": [0.5, 0.5, 0.6, 0.5, 0.5] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Recruiter's offer is the founder's exact search."
+    },
+    {
+      "id": "unc-01",
+      "sender": { "v": 1, "n": "Pat Doyle", "o": 1, "i": "general", "x": ["Music"], "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Robin Hale", "o": 1, "i": "general", "x": ["Hiking"], "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "unclear" },
+      "expected_escalated": true,
+      "note": "Openness 1, one interest each, no roles. Nothing to classify — must escalate."
+    },
+    {
+      "id": "unc-02",
+      "sender": { "v": 1, "n": "Lee Fang", "o": 2, "i": "general", "x": ["Startups", "Coffee", "Photography"], "r": "Just exploring", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Marta Kovac", "o": 2, "i": "general", "x": ["Ceramics", "Startups", "Travel"], "r": "Between things", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "unclear", "shared_interest": "Startups" },
+      "expected_escalated": true,
+      "note": "Vague roles, no offers or searches. A shared interest exists but the shape is unreadable."
+    },
+    {
+      "id": "unc-03",
+      "sender": { "v": 1, "n": "Dee Sharma", "o": 3, "i": "dating", "x": ["Poetry", "Cycling", "Cooking"], "r": "Product designer who writes on weekends", "h": "Design critique and sourdough troubleshooting", "q": "People who take their hobbies seriously", "p": [0.5, 0.6, 0.6, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Alex Fontaine", "o": 3, "i": "dating", "x": ["Cycling", "Literature", "Wine"], "r": "Backend developer, book club regular", "h": "Cycling route recommendations", "q": "Conversation partners outside tech", "p": [0.5, 0.5, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "peer", "shared_interest": "Cycling" },
+      "expected_escalated": false,
+      "note": "Dating intent at a professional event is odd but the profiles are peer-shaped; shared interest is unambiguous."
+    },
+    {
+      "id": "unc-04",
+      "sender": { "v": 1, "n": "Felix Braun", "o": 2, "i": "networking", "x": ["Consulting", "Strategy"], "r": "Strategy consultant", "h": "Slide decks", "q": "Interesting problems", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Rita Gomez", "o": 2, "i": "networking", "x": ["Healthcare", "Nursing"], "r": "Nurse practitioner", "h": "Patient care", "q": "Health tech people", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "unclear" },
+      "expected_escalated": true,
+      "note": "No textual basis to pick a shape; his offer does not serve her search and vice versa."
+    },
+    {
+      "id": "unc-05",
+      "sender": { "v": 1, "n": "Omar Zaid", "o": 4, "i": "networking", "x": ["Real Estate", "Property Management", "Airbnb"], "r": "Short-term rental operator", "h": "Property management and dynamic pricing", "q": "People buying their first rental", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Beth Connelly", "o": 4, "i": "networking", "x": ["Marine Biology", "Scuba", "Conservation"], "r": "Marine biologist", "h": "Coral restoration fieldwork", "q": "Dive shops doing conservation work", "p": [0.5, 0.5, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "unclear" },
+      "expected_escalated": true,
+      "note": "Both rich profiles, zero domain overlap, no textual role relation."
+    },
+    {
+      "id": "unc-06",
+      "sender": { "v": 1, "n": "Yara Aziz", "o": 3, "i": "networking", "x": ["Venture Capital", "Space", "Defense Tech"], "r": "Investor at a dual-use tech fund", "h": "Capital and government introductions", "q": "Founders with space or defense backgrounds", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Nick Brandt", "o": 3, "i": "networking", "x": ["Horticulture", "Vertical Farming"], "r": "Vertical farm operator", "h": "Greenhouse yield optimization", "q": "Grocery buyers for specialty produce", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "unclear" },
+      "expected_escalated": true,
+      "note": "An investor whose stated focus cannot serve this founder — superficially investor-shaped, actually unclear. Shapes must not be chosen from job titles alone."
+    },
+    {
+      "id": "unc-07",
+      "sender": { "v": 1, "n": "Nils Hagen", "o": 2, "i": "friendship", "x": ["Running", "Board Games"], "r": "Software engineer", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Mia Santos", "o": 2, "i": "friendship", "x": ["Running", "Baking"], "r": "Data analyst", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "peer", "shared_interest": "Running" },
+      "expected_escalated": false,
+      "note": "Sparse but peer-shaped: same career family, shared running. Ladder must stay generic-safe here."
+    },
+    {
+      "id": "unc-08",
+      "sender": { "v": 1, "n": "Theo Laurent", "o": 3, "i": "networking", "x": ["Venture Capital", "Consumer", "Marketplaces"], "r": "Consumer seed investor", "h": "Capital and consumer network", "q": "Consumer founders at pre-seed", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Ida Svensson", "o": 3, "i": "networking", "x": ["Venture Capital", "Fintech"], "r": "Fintech seed investor", "h": "Capital and banking network", "q": "Fintech founders at pre-seed", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "peer", "shared_interest": "Venture Capital", "complementarity": "identical" },
+      "expected_escalated": false,
+      "note": "Two investors: peer-shaped (identical skills, same stage), not investor-customer."
+    },
+    {
+      "id": "unc-09",
+      "sender": { "v": 1, "n": "June Park", "o": 3, "i": "networking", "x": ["AI Safety", "Alignment Research", "Python"], "r": "Alignment researcher", "h": "Eval design and red-teaming", "q": "People worried about specification gaming", "va": ["Long horizons"], "p": [0.5, 0.5, 0.5, 0.5, 0.7] },
+      "receiver": { "v": 1, "n": "Max Stein", "o": 3, "i": "networking", "x": ["Venture Capital", "AI Applications"], "r": "AI fund investor", "h": "Capital and GTM intros", "q": "Applied AI startups", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "unclear" },
+      "expected_escalated": true,
+      "note": "Investor-shaped sender but the receiver is a researcher, not a founder seeking capital; a title-matching model says investor, the text says unclear."
+    },
+    {
+      "id": "unc-10",
+      "sender": { "v": 1, "n": "Bea Ng", "o": 2, "i": "general", "x": ["Design"], "r": "Designer", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Kurt Weber", "o": 2, "i": "general", "x": ["Engineering"], "r": "Engineer", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "unclear" },
+      "expected_escalated": true,
+      "note": "Designer+engineer could be collab or nothing at all — no goals stated. Must not assert."
+    },
+    {
+      "id": "mix-01",
+      "sender": { "v": 1, "n": "Petra Vogel", "o": 3, "i": "networking", "x": ["Venture Capital", "Web3"], "r": "Web3 fund partner", "h": "Token design help and capital", "q": "Founders doing serious token economics", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Caleb Moss", "o": 4, "i": "networking", "x": ["Web3", "Zero Knowledge", "Rust"], "r": "ZK protocol engineer exploring a startup", "h": "ZK circuit design and Rust", "q": "A fund that understands deep tech tokens", "p": [0.5, 0.5, 0.6, 0.5, 0.5] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "shared_interest": "Web3" },
+      "expected_escalated": false,
+      "note": "Investor pair with a literal shared interest."
+    },
+    {
+      "id": "mix-02",
+      "sender": { "v": 1, "n": "Dana Whiteley", "o": 4, "i": "networking", "x": ["EdTech", "Curriculum Design", "Teacher Training"], "r": "Founder of a teacher-training platform", "h": "Curriculum design and district sales", "q": "School districts piloting professional development", "p": [0.6, 0.5, 0.5, 0.6, 0.5] },
+      "receiver": { "v": 1, "n": "Marcus Reed", "o": 4, "i": "networking", "x": ["Education", "School Administration"], "r": "District administrator for a large public school system", "h": "District operations and budget cycles", "q": "Vendors who respect teacher time", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": true },
+      "expected_escalated": false,
+      "note": "Vendor-customer, but his offer (district operations) genuinely serves her district-sales search."
+    },
+    {
+      "id": "mix-03",
+      "sender": { "v": 1, "n": "Sasha Volkov", "o": 3, "i": "networking", "x": ["Robotics", "Perception", "Investor Relations"], "r": "Roboticist turned scout at a hardware fund", "h": "Technical diligence and capital", "q": "Perception teams with field data", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Lin Bao", "o": 3, "i": "networking", "x": ["Computer Vision", "Agriculture", "Robotics"], "r": "Perception lead at an ag-robotics startup", "h": "Vision models for unstructured fields", "q": "Technical investors who get ag timelines", "p": [0.5, 0.5, 0.5, 0.6, 0.5] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "overlapping", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "shared_interest": "Robotics" },
+      "expected_escalated": false,
+      "note": "Investor with shared technical background."
+    },
+    {
+      "id": "mix-04",
+      "sender": { "v": 1, "n": "Claire Dubois", "o": 4, "i": "networking", "x": ["Psychology", "Behavior Change", "Product"], "r": "Behavioral scientist at a health app", "h": "Habit-formation research and study design", "q": "Product teams who ignore research at their peril", "va": ["Evidence first"], "p": [0.5, 0.6, 0.5, 0.5, 0.6] },
+      "receiver": { "v": 1, "n": "Jack Doyle", "o": 4, "i": "networking", "x": ["Product Management", "Health", "Growth"], "r": "Growth PM at a consumer health company", "h": "Onboarding funnels and experimentation", "q": "Researchers who can inform our roadmap", "p": [0.5, 0.5, 0.5, 0.6, 0.5] },
+      "expected": { "shape": "collab", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": true },
+      "expected_escalated": false,
+      "note": "Researcher and PM wanting each other; neither is the other's customer or boss."
+    },
+    {
+      "id": "mix-05",
+      "sender": { "v": 1, "n": "Victor Hugo Reyes", "o": 3, "i": "networking", "x": ["Logistics", "Freight", "Sales"], "r": "Freight broker owner", "h": "Trucking capacity and rate negotiation", "q": "Shippers with seasonal volume", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Anya Petrova", "o": 3, "i": "networking", "x": ["E-commerce", "Fulfillment", "Supply Chain"], "r": "Ops lead at a fast-growing e-commerce brand", "h": "Warehouse ops and carrier management", "q": "Reliable freight partners for Q4", "p": [0.5, 0.5, 0.5, 0.5, 0.6] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "shared_interest": "Supply Chain" },
+      "expected_escalated": false,
+      "note": "Broker-shipper pair with a shared interest."
+    },
+    {
+      "id": "mix-06",
+      "sender": { "v": 1, "n": "Ruth Bader Hall", "o": 3, "i": "networking", "x": ["Law", "Privacy", "Startups"], "r": "Startup lawyer focused on privacy", "h": "Privacy compliance and contract templates", "q": "Founders shipping data products without counsel yet", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Tobias Frank", "o": 4, "i": "networking", "x": ["Data Engineering", "Privacy", "Analytics"], "r": "Founder of a privacy-first analytics platform", "h": "Data pipelines and privacy architecture", "q": "Legal guidance on data processing agreements", "p": [0.5, 0.5, 0.5, 0.6, 0.5] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "shared_interest": "Privacy" },
+      "expected_escalated": false,
+      "note": "Lawyer-customer with shared privacy interest."
+    },
+    {
+      "id": "mix-07",
+      "sender": { "v": 1, "n": "Miriam Adler", "o": 3, "i": "networking", "x": ["Venture Capital", "Healthcare", "Medical Devices"], "r": "Medtech fund partner", "h": "Capital, FDA pathway advice, hospital pilots", "q": "Device founders with clinical validation", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Kenji Sato", "o": 4, "i": "networking", "x": ["Medical Devices", "Biomedical Engineering", "Clinical"], "r": "Biomedical engineer with a validated cardiac device", "h": "Device prototyping and clinical study design", "q": "Medtech investors for a Series A", "p": [0.5, 0.5, 0.6, 0.5, 0.5] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "Clean medtech investor-founder."
+    },
+    {
+      "id": "mix-08",
+      "sender": { "v": 1, "n": "Alma Torres", "o": 3, "i": "friendship", "x": ["Urbanism", "Transit", "Data Viz"], "r": "Transit data scientist", "h": "Ridership modeling and public dashboards", "q": "People who make cities legible with data", "p": [0.5, 0.5, 0.6, 0.5, 0.6] },
+      "receiver": { "v": 1, "n": "Ben Ohara", "o": 3, "i": "friendship", "x": ["Data Viz", "Civic Tech", "Cartography"], "r": "Civic tech developer", "h": "Map-based web apps", "q": "Transit data to visualize", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "collab", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": true, "shared_interest": "Data Viz" },
+      "expected_escalated": false,
+      "note": "Friendship intent but professional compliments."
+    },
+    {
+      "id": "mix-09",
+      "sender": { "v": 1, "n": "Gemma Holland", "o": 2, "i": "networking", "x": ["Fashion", "E-commerce", "Venture Capital"], "r": "Fashion-tech investor", "h": "Capital and retail intros", "q": "Resale and rental platforms", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "receiver": { "v": 1, "n": "Paul Duval", "o": 2, "i": "networking", "x": ["Fashion", "Retail Tech"], "r": "Founder of a luxury resale marketplace", "h": "Authentication workflows", "q": "Seed funding from fashion-savvy investors", "p": [0.5, 0.5, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "investor", "goal_fit": 2, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false, "shared_interest": "Fashion" },
+      "expected_escalated": false,
+      "note": "Sparse but crisp investor pair."
+    },
+    {
+      "id": "mix-10",
+      "sender": { "v": 1, "n": "Tomas Ruiz", "o": 3, "i": "networking", "x": ["Music Production", "Audio Engineering", "Startups"], "r": "Audio engineer building a mastering startup", "h": "Mixing, mastering, and DSP prototyping", "q": "Musicians with unmastered catalogs and opinions", "p": [0.5, 0.5, 0.5, 0.6, 0.5] },
+      "receiver": { "v": 1, "n": "Selma Nilsen", "o": 4, "i": "networking", "x": ["Music", "Songwriting", "Sync Licensing"], "r": "Working songwriter with a sync catalog", "h": "Topline writing and catalog management", "q": "Affordable mastering for a 40-track catalog", "p": [0.5, 0.6, 0.5, 0.5, 0.5] },
+      "expected": { "shape": "customer", "goal_fit": 1, "complementarity": "complementary", "offer_search_1_to_2": true, "offer_search_2_to_1": false },
+      "expected_escalated": false,
+      "note": "He sells mastering; she wants mastering. Textbook."
+    }
+  ]
+}

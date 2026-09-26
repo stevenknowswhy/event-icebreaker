@@ -1,0 +1,5 @@
+# Test/lint deps — exact versions verified on Python 3.13.14 (this sandbox).
+jsonschema==4.26.0
+pytest==9.1.1
+httpx==0.28.1
+ruff==0.16.9
