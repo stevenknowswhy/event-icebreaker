@@ -28,6 +28,7 @@ import { CopyButton, copyText } from "./copy-button";
 import { DemoMode } from "./demo-mode";
 import { MatchReadCard } from "./match-read-card";
 import { ProfileSetup } from "./profile-setup";
+import { SetupDoors } from "./setup-doors";
 
 const PROFILE_STORAGE_KEY = "event-icebreaker.profile.v1";
 const SETTINGS_STORAGE_KEY = "event-icebreaker.settings.v1";
@@ -305,8 +306,8 @@ function SenderMode() {
     localStorage.setItem(SETTINGS_STORAGE_KEY, JSON.stringify(next));
   }
 
-  function generateShare(scroll = true) {
-    const nextShared = createSharedProfile(profile, settings);
+  function pushShare(source: FullProfile, scroll: boolean) {
+    const nextShared = createSharedProfile(source, settings);
     setGenerated(nextShared);
     setShareUrl(
       `${window.location.origin}/receive#${encodePayload(nextShared)}`,
@@ -316,6 +317,19 @@ function SenderMode() {
         .getElementById("share-studio")
         ?.scrollIntoView({ behavior: "smooth", block: "start" });
     }
+  }
+
+  function generateShare(scroll = true) {
+    pushShare(profile, scroll);
+  }
+
+  // Speed-setup consent moment: the staged draft becomes the live profile
+  // only here — the same storage and downstream as a wizard-finished edit.
+  function commitProfile(next: FullProfile) {
+    setProfile(next);
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(next));
+    setSaveState("Saved on this device");
+    pushShare(next, true);
   }
 
   async function shareProfile() {
@@ -419,10 +433,11 @@ function SenderMode() {
 
       <section className="builder-section">
         <div className="shell compact-builder">
-          <ProfileSetup
+          <SetupDoors
             profile={profile}
-            onChange={updateProfile}
-            onFinish={() => generateShare(true)}
+            onProfileChange={updateProfile}
+            onCommitProfile={commitProfile}
+            onFinishWizard={() => generateShare(true)}
             saveState={saveState}
           />
 
