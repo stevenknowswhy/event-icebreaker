@@ -1958,26 +1958,107 @@ summary {
   margin: 6px 0 0;
 }
 
-.match-ladder-slot {
+/* The conversation ladder ribbon — rung 1 visible as the primary prompt,
+   rung 2 behind an explicit keep-going tap, rung 3 behind a deliberate tap
+   after the deeper notice (locked ladder decisions: skip always, no timers,
+   rung 3 never unasked). */
+
+.match-ladder {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 16px;
   margin-top: 22px;
+  padding: 20px 22px;
 }
 
-.match-ladder-slot__ribbon summary {
-  background: var(--electric-soft);
-  border: 1px solid rgba(12, 13, 15, 0.16);
+.match-ladder__label {
+  color: var(--violet);
+  margin: 0;
+}
+
+.match-ladder__rungs {
+  display: grid;
+  gap: 16px;
+  list-style: none;
+  margin: 14px 0 0;
+  padding: 0;
+}
+
+.match-ladder__question {
+  font-family: Georgia, serif;
+  font-size: 19px;
+  line-height: 1.45;
+  margin: 0;
+}
+
+.match-ladder__why {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  margin: 6px 0 0;
+  text-transform: uppercase;
+}
+
+.match-ladder__notice {
+  color: #4d4f49;
+  font-size: 13px;
+  line-height: 1.55;
+  margin: 16px 0 0;
+}
+
+.match-ladder__gates {
+  align-items: center;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px 14px;
+  margin-top: 16px;
+}
+
+.match-ladder__gate {
+  background: var(--ink);
+  border: 1px solid var(--ink);
   border-radius: 999px;
+  color: #fff;
   cursor: pointer;
-  display: inline-block;
+  font-size: 13px;
   font-weight: 700;
-  padding: 10px 22px;
+  padding: 10px 20px;
 }
 
-.match-ladder-slot__ribbon[open] summary {
-  border-radius: 14px 14px 0 0;
+.match-ladder__gate--deeper {
+  background: var(--violet);
+  border-color: var(--violet);
 }
 
-.match-ladder-slot__ribbon .microcopy {
-  padding: 12px 4px;
+.match-ladder__skip {
+  background: transparent;
+  border: 0;
+  color: var(--muted);
+  cursor: pointer;
+  font-size: 12px;
+  padding: 10px 6px;
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+
+.match-ladder__paused {
+  color: var(--muted);
+  font-size: 13px;
+  margin: 0;
+}
+
+.match-ladder__resume {
+  background: transparent;
+  border: 0;
+  color: var(--ink);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 700;
+  margin-left: 10px;
+  padding: 0;
+  text-decoration: underline;
+  text-underline-offset: 4px;
 }
 
 .match-read-card__footnote {
@@ -2052,6 +2133,10 @@ summary {
   .setup-doors,
   .match-read-card__insights {
     grid-template-columns: 1fr;
+  }
+
+  .match-ladder {
+    padding: 16px 18px;
   }
 
   .match-read-card__shape {

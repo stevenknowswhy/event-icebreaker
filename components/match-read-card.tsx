@@ -2,6 +2,7 @@
 
 import type { MatchDossier, MatchDossierSource } from "../lib/match";
 import { CopyButton } from "./copy-button";
+import { MatchReadRibbon } from "./match-read-ribbon";
 
 /**
  * Presentational renderer for the two-way match dossier (blueprint
@@ -17,8 +18,9 @@ import { CopyButton } from "./copy-button";
  * - ready (local)    — sidecar off/down; the estimate is clearly marked
  *
  * The score renders as a band plus reasons, never a raw number (locked spec
- * decision). The conversation ladder is deliberately NOT rendered here — the
- * ribbon slot below is reserved for the parallel ladder task.
+ * decision). The conversation ladder renders through MatchReadRibbon below —
+ * strictly the sidecar's rungs, and never on a local estimate or an
+ * escalated read (the uncertain state hands off to the AI prompt instead).
  */
 export type MatchReadCardProps =
   | { status: "loading" }
@@ -194,14 +196,13 @@ export function MatchReadCard(props: MatchReadCardProps) {
       )}
 
       {showLadderSlot && (
-        <div className="match-ladder-slot" data-ladder-slot="reserved">
-          <details className="match-ladder-slot__ribbon">
-            <summary>Keep going</summary>
-            <p className="microcopy">
-              Deeper questions load with the full conversation ladder.
-            </p>
-          </details>
-        </div>
+        // Keyed by the ladder's content: a different dossier's ladder starts
+        // the consent ladder over from the bridge; an identical ladder keeps
+        // the visitor's pause decision instead of nagging them again.
+        <MatchReadRibbon
+          key={JSON.stringify(dossier.ladder)}
+          rungs={dossier.ladder}
+        />
       )}
 
       <footer className="match-read-card__footnote">

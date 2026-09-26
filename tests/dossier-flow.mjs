@@ -5,7 +5,9 @@
  * dossier state in a phone-sized browser:
  *
  *   1. no-profile receiver  → setup doors + consent-gated wizard → local estimate
- *   2. sidecar dossier      → full confident read, ladder slot reserved
+ *   2. sidecar dossier      → full confident read; ladder ribbon: rung 1
+ *      visible, rung 2 behind keep-going, rung 3 behind the deeper tap,
+ *      skip at every level, pause + fresh-consent resume
  *   3. escalated dossier    → honest uncertainty, handoff to the AI prompt
  *   4. sidecar down         → clearly marked local estimate, no ladder
  *   5. sidecar slow         → loading card while the request is in flight
@@ -120,7 +122,16 @@ const SIDECAR_ESCALATED = {
   },
   bestFirstMove:
     "Ask what each of you is actually building right now — the cards are thin.",
-  ladder: [],
+  // The wire contract allows rungs on an escalated dossier — the client must
+  // still refuse to render them: an uncertain read must not hand out
+  // personalized disclosure questions as if they were confident.
+  ladder: [
+    {
+      level: 1,
+      question: "What are you each building right now?",
+      why: "Goal fit",
+    },
+  ],
   escalated: true,
 };
 
@@ -335,10 +346,78 @@ try {
   assert.match(readyText, /community resilience/);
   // Band plus reasons — never the raw number (locked spec decision).
   assert.doesNotMatch(readyText, /\b74\b/);
+  // The conversation ladder (locked ladder decisions): rung 1 renders as the
+  // primary visible prompt with its quiet why-trace; rungs 2–3 stay hidden.
+  const ladder = readyCard.locator(".match-ladder");
+  assert.equal(await ladder.count(), 1);
+  const rungOne = ladder.locator('[data-ladder-rung="1"]');
+  assert.equal(await rungOne.count(), 1);
+  assert.match(
+    await rungOne.textContent(),
+    /What pulled you into community resilience work\?/,
+  );
+  assert.match(await rungOne.textContent(), /Shared interest/i);
+  assert.equal(await ladder.locator('[data-ladder-rung="2"]').count(), 0);
+  assert.equal(await ladder.locator('[data-ladder-rung="3"]').count(), 0);
+  // Skip is available from the first rung on.
   assert.equal(
-    await readyCard.locator("[data-ladder-slot=reserved]").count(),
+    await ladder.getByRole("button", { name: /not now/i }).count(),
     1,
   );
+  // Nothing advances on a timer — the gates hold without any input.
+  await readyPage.waitForTimeout(1_500);
+  assert.equal(await ladder.locator('[data-ladder-rung="2"]').count(), 0);
+  assert.equal(await ladder.locator('[data-ladder-rung="3"]').count(), 0);
+
+  // Rung 2 (fit): only an explicit keep-going reveals it.
+  await ladder.getByRole("button", { name: /keep going/i }).click();
+  const rungTwo = ladder.locator('[data-ladder-rung="2"]');
+  await rungTwo.waitFor();
+  assert.match(
+    await rungTwo.textContent(),
+    /What would make the next six months a win for you\?/,
+  );
+  assert.match(await rungTwo.textContent(), /Goal fit/i);
+  assert.equal(await ladder.locator('[data-ladder-rung="3"]').count(), 0);
+  await readyPage.screenshot({
+    path: "artifacts/dossier-ladder-rung2.png",
+    fullPage: true,
+  });
+
+  // Rung 3 (curiosity gap): the explicit deeper notice precedes the tap, and
+  // only the deliberate tap after it reveals the rung — never unasked.
+  assert.match(await ladder.textContent(), /goes a little deeper/i);
+  await ladder
+    .getByRole("button", { name: /show the deeper question/i })
+    .click();
+  const rungThree = ladder.locator('[data-ladder-rung="3"]');
+  await rungThree.waitFor();
+  assert.match(
+    await rungThree.textContent(),
+    /What is the strangest thing you have ever prototyped\?/,
+  );
+  // Skip survives to the deepest rung.
+  assert.equal(
+    await ladder.getByRole("button", { name: /not now/i }).count(),
+    1,
+  );
+  await readyPage.screenshot({
+    path: "artifacts/dossier-ladder-full.png",
+    fullPage: true,
+  });
+
+  // Skipping pauses the whole ladder quietly — never a dead end — and
+  // resuming restarts at rung 1: deeper rungs need fresh taps.
+  await ladder.getByRole("button", { name: /not now/i }).click();
+  await ladder.getByText(/paused/i).waitFor();
+  assert.equal(await ladder.locator("[data-ladder-rung]").count(), 0);
+  await ladder
+    .getByRole("button", { name: /show the ladder again/i })
+    .click();
+  assert.equal(await rungOne.count(), 1);
+  assert.equal(await ladder.locator('[data-ladder-rung="2"]').count(), 0);
+  assert.equal(await ladder.locator('[data-ladder-rung="3"]').count(), 0);
+  results.ladderRibbon = "passed";
   assert.match(
     await readyPage.locator(".match-read-card__footnote").textContent(),
     /stateless model/i,
@@ -367,10 +446,7 @@ try {
     await escalatedCard.locator("h3").first().textContent(),
     /Want a sharper read\?/i,
   );
-  assert.equal(
-    await escalatedCard.locator("[data-ladder-slot=reserved]").count(),
-    0,
-  );
+  assert.equal(await escalatedCard.locator(".match-ladder").count(), 0);
   await escalatedCard.getByRole("button", { name: "Copy AI prompt" }).click();
   await escalatedCard
     .getByRole("button", { name: "Copied ✓" })
@@ -401,10 +477,7 @@ try {
   assert.match(downText, /Offer ↔ search fit/);
   assert.match(downText, /No clear offer-to-search overlap/);
   assert.match(downText, /They can help with: Emergency planning/);
-  assert.equal(
-    await downCard.locator("[data-ladder-slot=reserved]").count(),
-    0,
-  );
+  assert.equal(await downCard.locator(".match-ladder").count(), 0);
   assert.equal(
     await downCard.locator(".match-read-card__escalation").count(),
     0,
