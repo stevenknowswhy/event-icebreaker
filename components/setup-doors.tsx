@@ -15,6 +15,7 @@ import {
 } from "../lib/speed-setup";
 import { CopyButton } from "./copy-button";
 import { ProfileSetup } from "./profile-setup";
+import { useGuardrailAdvisories } from "./use-guardrail-advisories";
 
 type DoorView = "doors" | "speed" | "review" | "wizard";
 
@@ -72,6 +73,9 @@ export function SetupDoors({
     useState<SpeedSetupParseFailure | null>(null);
   const [paste, setPaste] = useState("");
   const prompt = useMemo(() => createSpeedSetupPrompt(), []);
+  // Save-time guardrails for the wizard door only — the speed path runs its
+  // own ingest checks before review (blueprint item 5).
+  const wizardAdvisories = useGuardrailAdvisories(profile, view === "wizard");
 
   function clearStaged() {
     setStaged(null);
@@ -160,6 +164,7 @@ export function SetupDoors({
       <ProfileSetup
         profile={profile}
         onChange={onProfileChange}
+        advisories={wizardAdvisories}
         onFinish={onFinishWizard}
         saveState={saveState}
         onBack={cancelToDoors}

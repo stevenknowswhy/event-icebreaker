@@ -3,6 +3,7 @@
 import { useRef, useState } from "react";
 
 import type { FullProfile } from "../lib/icebreaker";
+import type { GuardrailAdvisories } from "./use-guardrail-advisories";
 
 const PERSONALITY_LABELS = [
   "Openness",
@@ -19,6 +20,18 @@ function parseList(value: string): string[] {
     .filter(Boolean);
 }
 
+/** Advisory banner for one wizard field; renders nothing when clean. */
+function FieldAdvisory({ messages }: { messages?: string[] }) {
+  if (!messages?.length) return null;
+  return (
+    <span className="field-advisory">
+      {messages.map((message) => (
+        <span key={message}>{message}</span>
+      ))}
+    </span>
+  );
+}
+
 export function ProfileSetup({
   profile,
   onChange,
@@ -26,6 +39,7 @@ export function ProfileSetup({
   saveState,
   finishLabel = "Refresh my share card",
   onBack,
+  advisories,
 }: {
   profile: FullProfile;
   onChange: <K extends keyof FullProfile>(
@@ -37,6 +51,8 @@ export function ProfileSetup({
   /** Receiver flows finish into a match read instead of a share card. */
   finishLabel?: string;
   onBack?: () => void;
+  /** Advisory guardrail banners keyed by field id (blueprint item 5). */
+  advisories?: GuardrailAdvisories;
 }) {
   const [step, setStep] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -59,6 +75,7 @@ export function ProfileSetup({
               maxLength={80}
               onChange={(event) => onChange("name", event.target.value)}
             />
+            <FieldAdvisory messages={advisories?.name} />
           </label>
           <label>
             <span>Role or one-line identity</span>
@@ -67,6 +84,7 @@ export function ProfileSetup({
               maxLength={120}
               onChange={(event) => onChange("role", event.target.value)}
             />
+            <FieldAdvisory messages={advisories?.role} />
           </label>
         </>
       ),
@@ -83,6 +101,7 @@ export function ProfileSetup({
               maxLength={160}
               onChange={(event) => onChange("spark", event.target.value)}
             />
+            <FieldAdvisory messages={advisories?.spark} />
           </label>
           <label>
             <span>One sentence of context</span>
@@ -94,6 +113,7 @@ export function ProfileSetup({
                 onChange("sparkDetails", event.target.value)
               }
             />
+            <FieldAdvisory messages={advisories?.sparkDetails} />
           </label>
         </>
       ),
@@ -110,6 +130,7 @@ export function ProfileSetup({
             rows={4}
             onChange={(event) => onChange("canHelp", event.target.value)}
           />
+          <FieldAdvisory messages={advisories?.canHelp} />
         </label>
       ),
     },
@@ -125,6 +146,7 @@ export function ProfileSetup({
             rows={4}
             onChange={(event) => onChange("lookingFor", event.target.value)}
           />
+          <FieldAdvisory messages={advisories?.lookingFor} />
         </label>
       ),
     },
@@ -143,6 +165,7 @@ export function ProfileSetup({
               }
             />
             <small>Separate with commas.</small>
+            <FieldAdvisory messages={advisories?.interests} />
           </label>
           <label>
             <span>Values</span>
@@ -153,6 +176,7 @@ export function ProfileSetup({
                 onChange("values", parseList(event.target.value))
               }
             />
+            <FieldAdvisory messages={advisories?.values} />
           </label>
           <label>
             <span>Communication style</span>
@@ -163,6 +187,7 @@ export function ProfileSetup({
                 onChange("communicationStyle", event.target.value)
               }
             />
+            <FieldAdvisory messages={advisories?.communicationStyle} />
           </label>
           <label>
             <span>Fun fact or invitation</span>
@@ -171,6 +196,7 @@ export function ProfileSetup({
               maxLength={220}
               onChange={(event) => onChange("funFact", event.target.value)}
             />
+            <FieldAdvisory messages={advisories?.funFact} />
           </label>
         </>
       ),
