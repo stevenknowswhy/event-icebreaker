@@ -500,7 +500,15 @@ try {
       .locator(".field-advisory")
       .filter({ hasText: /contact details/i })
       .first()
-      .waitFor({ timeout: 8_000 });
+      .waitFor({ timeout: 8_000 })
+      .catch((error) => {
+        const state = guardrailTraffic.get(receiver);
+        console.error(
+          "beat 3b banner never rendered — guardrail request trace:",
+          JSON.stringify(state, null, 1),
+        );
+        throw error;
+      });
     await receiver.screenshot({
       path: "artifacts/dogfood-05b-guardrail-flag.png",
       fullPage: true,

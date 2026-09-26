@@ -221,18 +221,20 @@ export async function checkProfileText(
   const timeoutMs = options.timeoutMs ?? GUARDRAILS_TIMEOUT_MS;
 
   try {
-    const settled = await Promise.all(
-      entries.map(
-        async ([field, text]) =>
-          [
-            field,
-            await checkFieldText(baseUrl, text, fetchImpl, timeoutMs),
-          ] as const,
-      ),
-    );
+    // Sequential by design: the sidecar serves one request at a time (a
+    // single CPU-bound model worker), so a concurrent wave only queues in
+    // the browser while each request's own 2.5 s abort burns down — tail
+    // requests then abort mid-preflight and the whole check degrades. Sent
+    // in order, every request starts fresh with its full abort budget
+    // against the server's actual service time.
     const verdicts: GuardrailFieldVerdicts = {};
-    for (const [field, verdict] of settled) {
-      verdicts[field] = verdict;
+    for (const [field, text] of entries) {
+      verdicts[field] = await checkFieldText(
+        baseUrl,
+        text,
+        fetchImpl,
+        timeoutMs,
+      );
     }
     return { status: "ok", verdicts };
   } catch {
