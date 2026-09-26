@@ -1,0 +1,7 @@
+# Runtime deps — exact versions verified on Python 3.13.14 (this sandbox), pinned per spec.
+# torch CPU wheels: install with --index-url https://download.pytorch.org/whl/cpu (see Dockerfile).
+laya==0.3.20
+torch==2.14.0+cpu
+fastapi==0.141.1
+pydantic==2.13.5
+uvicorn==0.54.0

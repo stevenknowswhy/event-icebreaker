@@ -1,0 +1,106 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://event-icebreaker.obvious.ai/contracts/match-dossier.schema.json",
+  "title": "MatchDossier",
+  "description": "Wire contract for POST /v1/match/deep. Mirrors the spec's TypeScript MatchDossier type exactly; the pytest contract test validates live responses against this file with additionalProperties: false everywhere. A TypeScript client (lib/match.ts) is built against the same type.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": [
+    "shape",
+    "dimensions",
+    "bridge",
+    "curiosityGap",
+    "score",
+    "bestFirstMove",
+    "ladder",
+    "escalated"
+  ],
+  "properties": {
+    "shape": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["kind", "confidence"],
+      "properties": {
+        "kind": {
+          "type": "string",
+          "enum": ["peer", "collab", "mentor", "investor", "customer", "unclear"]
+        },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    },
+    "dimensions": {
+      "type": "array",
+      "items": { "$ref": "#/$defs/dimension" }
+    },
+    "bridge": {
+      "oneOf": [{ "$ref": "#/$defs/detail" }, { "type": "null" }]
+    },
+    "curiosityGap": {
+      "oneOf": [{ "$ref": "#/$defs/detail" }, { "type": "null" }]
+    },
+    "score": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["value", "band", "byShape"],
+      "properties": {
+        "value": { "type": "integer", "minimum": 0, "maximum": 100 },
+        "band": { "type": "string", "enum": ["low", "some", "strong"] },
+        "byShape": { "type": "string" }
+      }
+    },
+    "bestFirstMove": { "type": "string", "minLength": 1 },
+    "ladder": {
+      "type": "array",
+      "minItems": 2,
+      "maxItems": 2,
+      "description": "Rungs 2 and 3 only; rung 1 IS bestFirstMove. Rung 3 is tap-gated client-side and never auto-shown.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["level", "question", "why"],
+        "properties": {
+          "level": { "type": "integer", "enum": [2, 3] },
+          "question": { "type": "string", "minLength": 1 },
+          "why": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "escalated": { "type": "boolean" }
+  },
+  "$defs": {
+    "dimension": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["id", "label", "verdict", "confidence", "evidence"],
+      "properties": {
+        "id": {
+          "type": "string",
+          "enum": [
+            "bridge",
+            "goal_fit",
+            "complementarity",
+            "offer_search",
+            "stage_gap",
+            "curiosity_gap"
+          ]
+        },
+        "label": { "type": "string", "minLength": 1 },
+        "verdict": { "type": "string", "minLength": 1 },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "evidence": {
+          "type": "array",
+          "items": { "type": "string", "minLength": 1 }
+        }
+      }
+    },
+    "detail": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["interest", "why"],
+      "properties": {
+        "interest": { "type": "string", "minLength": 1 },
+        "why": { "type": "string", "minLength": 1 }
+      }
+    }
+  }
+}
