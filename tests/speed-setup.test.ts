@@ -7,7 +7,6 @@ import {
   createSpeedSetupPrompt,
   findContactInfo,
   parseSpeedSetupPaste,
-  validateGuardrailVerdicts,
 } from "../lib/speed-setup.ts";
 import type { FullProfile } from "../lib/icebreaker.ts";
 
@@ -316,49 +315,38 @@ test("the copy-prompt carries the game and the strict return contract", () => {
   assert.match(prompt, /ONLY the block/i);
 });
 
-test("guardrail verdict validation keeps only well-shaped entries", () => {
-  assert.deepEqual(
-    validateGuardrailVerdicts({
-      results: {
-        canHelp: { contact: true, tone: false },
-        lookingFor: { contact: false, tone: true },
-        bad: { contact: "yes" },
-        worse: "nope",
-      },
-    }),
-    {
-      canHelp: { contact: true, tone: false },
-      lookingFor: { contact: false, tone: true },
-    },
-  );
-  assert.equal(validateGuardrailVerdicts({ nope: 1 }), null);
-  assert.equal(validateGuardrailVerdicts("nope"), null);
-  assert.deepEqual(validateGuardrailVerdicts({ results: {} }), {});
-});
-
-test("guardrails resolve verdicts from a healthy sidecar", async () => {
-  let capturedUrl = "";
-  let capturedBody: unknown;
+test("guardrail ingest sends one {text} request per field and maps verdicts", async () => {
+  const requests: Array<{ url: string; body: unknown }> = [];
   const verdicts = await checkSpeedSetupGuardrails(
-    { canHelp: "Prototyping", spark: "" },
+    { canHelp: "Prototyping", lookingFor: "Collaborators", spark: "  " },
     {
       sidecarUrl: SIDECAR_BASE,
       fetchImpl: async (url, init) => {
-        capturedUrl = String(url);
-        capturedBody = JSON.parse(String(init?.body ?? "{}"));
+        requests.push({
+          url: String(url),
+          body: JSON.parse(String(init?.body ?? "{}")),
+        });
+        const text = JSON.parse(String(init?.body ?? "{}")).text;
         return jsonResponse({
-          results: { canHelp: { contact: false, tone: false } },
+          contact: { present: text.includes("Reach"), confidence: 0.97, matched: text.includes("Reach") ? ["email"] : [] },
+          tone: { present: false, confidence: 0.99 },
         });
       },
     },
   );
 
-  assert.deepEqual(verdicts, { canHelp: { contact: false, tone: false } });
-  assert.equal(capturedUrl, `${SIDECAR_BASE}/v1/profile-guardrails`);
+  // Whole-text contract: one request per non-empty field, each { text } —
+  // never a per-field map. Empty fields send nothing.
+  assert.equal(requests.length, 2);
+  assert.equal(requests[0].url, `${SIDECAR_BASE}/v1/profile-guardrails`);
   assert.deepEqual(
-    (capturedBody as { fields: Record<string, string> }).fields,
-    { canHelp: "Prototyping" },
+    requests.map((request) => (request.body as { text: string }).text),
+    ["Prototyping", "Collaborators"],
   );
+  assert.deepEqual(verdicts, {
+    canHelp: { contact: false, tone: false },
+    lookingFor: { contact: false, tone: false },
+  });
 });
 
 test("guardrails skip silently when the sidecar is unreachable", async () => {

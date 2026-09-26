@@ -6,6 +6,12 @@ import { getSidecarUrl } from "./laya-client.ts";
  * art_gdKW4J5q, item 5): two yes/no judgments per free-text field — pasted
  * contact info and tone that would read wrong in a professional room.
  *
+ * The sidecar's contract is whole-text: one `{ text }` request in, one
+ * `{ contact, tone }` verdict pair out (contact naming the deterministic
+ * detectors that fired). There is no per-field map on the wire — this
+ * client sends one request per field and maps each whole-text verdict back
+ * to its field's banner.
+ *
  * Advisory, never blocking: every failure mode (URL unset, fetch rejection,
  * timeout, non-2xx, malformed body) resolves to `{ status: "unavailable" }`
  * so callers skip the advisories silently, per the degradation contract.
@@ -17,7 +23,12 @@ import { getSidecarUrl } from "./laya-client.ts";
 const GUARDRAILS_ENDPOINT_PATH = "/v1/profile-guardrails";
 const GUARDRAILS_TIMEOUT_MS = 2_500;
 const GUARDRAILS_MAX_FIELDS = 10;
-const GUARDRAILS_FIELD_LENGTH = 4_000;
+// The sidecar rejects text beyond 2000 chars with a 422 (app/validation.py
+// GuardrailsRequest) — truncate to its cap so one oversized field cannot
+// turn the whole check unavailable.
+const GUARDRAILS_MAX_TEXT_LENGTH = 2_000;
+const GUARDRAILS_MAX_MATCHED = 8;
+const GUARDRAILS_MATCHED_ITEM_LENGTH = 64;
 
 /** The ten free-text profile fields a guardrail check can judge. */
 export const GUARDRAIL_FIELD_IDS = [
@@ -96,57 +107,101 @@ function requireKeys(
   }
 }
 
-/**
- * Strictly validates an untrusted guardrails response: exactly `results`,
- * every requested field present, no extra fields, and boolean
- * `contact`/`tone` throughout. Throws on any violation so the caller's
- * catch turns a drifted sidecar into a clean "unavailable".
- */
-export function validateGuardrailFieldVerdicts(
-  value: unknown,
-  requestedFields: readonly string[],
-): GuardrailFieldVerdicts {
-  if (!isRecord(value)) {
-    throw new Error("The guardrail response is invalid.");
+function requireConfidence(value: unknown, label: string): void {
+  if (
+    typeof value !== "number" ||
+    !Number.isFinite(value) ||
+    value < 0 ||
+    value > 1
+  ) {
+    throw new Error(`The guardrail ${label} confidence is invalid.`);
   }
-  requireKeys(value, ["results"], "guardrail response");
-  if (!isRecord(value.results)) {
-    throw new Error("The guardrail results are invalid.");
-  }
-
-  const requested = new Set(requestedFields);
-  for (const key of Object.keys(value.results)) {
-    if (!requested.has(key)) {
-      throw new Error(
-        `The guardrail response has an unexpected result field “${key}”.`,
-      );
-    }
-  }
-
-  const verdicts: GuardrailFieldVerdicts = {};
-  for (const field of requestedFields) {
-    const raw = value.results[field];
-    if (!isRecord(raw)) {
-      throw new Error(`The guardrail verdict for “${field}” is invalid.`);
-    }
-    requireKeys(raw, ["contact", "tone"], `verdict for “${field}”`);
-    if (typeof raw.contact !== "boolean" || typeof raw.tone !== "boolean") {
-      throw new Error(`The guardrail verdict for “${field}” is invalid.`);
-    }
-    verdicts[field] = { contact: raw.contact, tone: raw.tone };
-  }
-  return verdicts;
 }
 
 /**
- * Posts free-text fields to `/v1/profile-guardrails` and resolves the
- * validated per-field verdicts. The sidecar is stateless — nothing about
- * the request is persisted — and the result is advisory either way:
- * `unavailable` on any failure, so a save never waits on or fails from
- * this call. Never throws.
+ * Strictly validates an untrusted `/v1/profile-guardrails` response for one
+ * text: exactly `contact` and `tone`, each verdict carrying only its
+ * contract fields — `matched` names the deterministic contact detectors
+ * that fired. Throws on any violation so the caller's catch turns a
+ * drifted sidecar into a clean "unavailable".
+ */
+export function validateGuardrailTextVerdicts(
+  value: unknown,
+): GuardrailFieldVerdict {
+  if (!isRecord(value)) {
+    throw new Error("The guardrail response is invalid.");
+  }
+  requireKeys(value, ["contact", "tone"], "guardrail response");
+  const contact = value.contact;
+  const tone = value.tone;
+  if (!isRecord(contact) || !isRecord(tone)) {
+    throw new Error("The guardrail verdicts are invalid.");
+  }
+  requireKeys(contact, ["present", "confidence", "matched"], "contact verdict");
+  requireKeys(tone, ["present", "confidence"], "tone verdict");
+  if (
+    typeof contact.present !== "boolean" ||
+    typeof tone.present !== "boolean"
+  ) {
+    throw new Error("The guardrail verdicts are invalid.");
+  }
+  requireConfidence(contact.confidence, "contact");
+  requireConfidence(tone.confidence, "tone");
+  if (
+    !Array.isArray(contact.matched) ||
+    contact.matched.length > GUARDRAILS_MAX_MATCHED ||
+    contact.matched.some(
+      (kind) =>
+        typeof kind !== "string" ||
+        kind.length > GUARDRAILS_MATCHED_ITEM_LENGTH,
+    )
+  ) {
+    throw new Error("The guardrail contact matched list is invalid.");
+  }
+  return { contact: contact.present, tone: tone.present };
+}
+
+/**
+ * One `{ text }` request — the sidecar's whole contract for this endpoint.
+ * Throws on any failure so the fan-out's catch degrades the whole check;
+ * the 2.5 s abort and strict validation stay per request.
+ */
+async function checkFieldText(
+  baseUrl: string,
+  text: string,
+  fetchImpl: typeof fetch,
+  timeoutMs: number,
+): Promise<GuardrailFieldVerdict> {
+  const controller = new AbortController();
+  const timer = setTimeout(() => controller.abort(), timeoutMs);
+  try {
+    const response = await fetchImpl(`${baseUrl}${GUARDRAILS_ENDPOINT_PATH}`, {
+      method: "POST",
+      headers: { "content-type": "application/json" },
+      body: JSON.stringify({ text }),
+      signal: controller.signal,
+    });
+    if (!response.ok) {
+      throw new Error(`The guardrail check failed with status ${response.status}.`);
+    }
+    return validateGuardrailTextVerdicts(await response.json());
+  } finally {
+    clearTimeout(timer);
+  }
+}
+
+/**
+ * Checks free-text fields against `/v1/profile-guardrails` and resolves the
+ * validated per-field verdicts. The sidecar judges whole text, so each
+ * field travels as its own `{ text }` request and the whole-text verdict
+ * pair maps back to that field. All fields must pass: a partial answer is
+ * a half-warning, and the degradation contract skips advisories entirely.
+ * The sidecar is stateless — nothing about the request is persisted — and
+ * the result is advisory either way: `unavailable` on any failure, so a
+ * save never waits on or fails from this call. Never throws.
  */
 export async function checkProfileText(
-  fields: Partial<Record<GuardrailFieldId, string>>,
+  fields: Record<string, string>,
   options: GuardrailCheckOptions = {},
 ): Promise<GuardrailCheckResult> {
   const baseUrl =
@@ -157,36 +212,33 @@ export async function checkProfileText(
     .filter(([, value]) => typeof value === "string" && value.trim().length > 0)
     .slice(0, GUARDRAILS_MAX_FIELDS)
     .map(
-      ([field, value]) => [field, value.slice(0, GUARDRAILS_FIELD_LENGTH)] as const,
+      ([field, value]) =>
+        [field, value.slice(0, GUARDRAILS_MAX_TEXT_LENGTH)] as const,
     );
   if (!entries.length) return { status: "ok", verdicts: {} };
 
   const fetchImpl = options.fetchImpl ?? fetch;
-  const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(),
-    options.timeoutMs ?? GUARDRAILS_TIMEOUT_MS,
-  );
+  const timeoutMs = options.timeoutMs ?? GUARDRAILS_TIMEOUT_MS;
 
   try {
-    const response = await fetchImpl(`${baseUrl}${GUARDRAILS_ENDPOINT_PATH}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ fields: Object.fromEntries(entries) }),
-      signal: controller.signal,
-    });
-    if (!response.ok) return { status: "unavailable" };
-    const verdicts = validateGuardrailFieldVerdicts(
-      await response.json(),
-      entries.map(([field]) => field),
+    const settled = await Promise.all(
+      entries.map(
+        async ([field, text]) =>
+          [
+            field,
+            await checkFieldText(baseUrl, text, fetchImpl, timeoutMs),
+          ] as const,
+      ),
     );
+    const verdicts: GuardrailFieldVerdicts = {};
+    for (const [field, verdict] of settled) {
+      verdicts[field] = verdict;
+    }
     return { status: "ok", verdicts };
   } catch {
     // Degradation contract: the sidecar being down, slow, or misbehaving is
     // an expected state — the save proceeds without advisories.
     return { status: "unavailable" };
-  } finally {
-    clearTimeout(timer);
   }
 }
 

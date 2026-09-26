@@ -1,0 +1,51 @@
+{
+  "$schema": "https://json-schema.org/draft/2020-12/schema",
+  "$id": "https://event-icebreaker.obvious.ai/contracts/profile-guardrails.schema.json",
+  "title": "ProfileGuardrails",
+  "description": "Wire contract for POST /v1/profile-guardrails. The request is a single whole-text { text } body — the sidecar has no per-field map, and a drifted client 422s against the strict request model (app/validation.py GuardrailsRequest). The response carries the two yes/no judgments for that text (app/schemas.py GuardrailsOut). The root schema validates the RESPONSE; $defs/request validates the REQUEST. A TypeScript client (lib/guardrails.ts) is built against the same shapes; the pytest contract test validates live requests and responses against this file with additionalProperties: false everywhere.",
+  "type": "object",
+  "additionalProperties": false,
+  "required": ["contact", "tone"],
+  "properties": {
+    "contact": { "$ref": "#/$defs/contact" },
+    "tone": { "$ref": "#/$defs/tone" }
+  },
+  "$defs": {
+    "request": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["text"],
+      "properties": {
+        "text": {
+          "type": "string",
+          "minLength": 1,
+          "maxLength": 2000,
+          "description": "The free-text field content to judge. Beyond 2000 chars the sidecar answers 422 rather than truncate."
+        }
+      }
+    },
+    "contact": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present", "confidence", "matched"],
+      "properties": {
+        "present": { "type": "boolean" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 },
+        "matched": {
+          "type": "array",
+          "description": "Named deterministic contact detectors that fired (email, url, handle, phone); a model-only backstop hit yields [].",
+          "items": { "type": "string" }
+        }
+      }
+    },
+    "tone": {
+      "type": "object",
+      "additionalProperties": false,
+      "required": ["present", "confidence"],
+      "properties": {
+        "present": { "type": "boolean" },
+        "confidence": { "type": "number", "minimum": 0, "maximum": 1 }
+      }
+    }
+  }
+}

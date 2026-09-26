@@ -5,3 +5,5 @@ dist/
 .vinext/
 artifacts/
 .DS_Store
+laya-sidecar/.venv/
+tsconfig.tsbuildinfo

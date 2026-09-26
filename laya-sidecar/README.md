@@ -90,7 +90,7 @@ The app points at this service with `NEXT_PUBLIC_LAYA_URL`.
 ## Tests and evaluation
 
 ```bash
-pytest -q                       # 100 tests: unit, API, contract, ladder safety, guardrails
+pytest -q                       # 106 tests: unit, API, contract, ladder safety, guardrails
 ruff check .                    # lint
 HF_HUB_OFFLINE=1 python eval.py # measured report + eval_results.json (per-pair detail)
 ```
