@@ -31,8 +31,16 @@ npm run dev
 npm run lint
 npm test
 node tests/preview-flow.mjs
+npx node@22 tests/dossier-flow.mjs
 ```
 
 The preview flow exercises sender generation, QR/share URL creation, receiver
 decoding, AI-prompt copy, and manual Connection String recovery in a
 phone-sized browser.
+
+The dossier flow builds the app with a sidecar URL inlined, starts the
+production server, and drives the two-way match states: setup doors with
+consent-gated wizard completion, the confident sidecar dossier, the escalated
+uncertainty state with the AI-prompt handoff, the sidecar-down local estimate,
+and the loading card. It writes screenshots to `artifacts/`.
+

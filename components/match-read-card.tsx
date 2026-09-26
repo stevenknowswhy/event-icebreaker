@@ -105,7 +105,7 @@ export function MatchReadCard(props: MatchReadCardProps) {
       aria-label="Two-way match read"
     >
       <header className="match-read-card__head">
-        <p className="step-label">THE TWO-WAY READ</p>
+        <p className="step-label">MATCH DOSSIER</p>
         <span
           className={`match-read-card__badge${
             isLocal ? " match-read-card__badge--local" : ""

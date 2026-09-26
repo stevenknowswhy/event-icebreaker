@@ -668,7 +668,6 @@ function ReceiverMode() {
               <p className="step-label">THE TWO-WAY READ</p>
               <h2>How the two of you land.</h2>
             </div>
-            <span className="payload-meter">computed on this device</span>
           </div>
 
           {receiverProfile ? (
