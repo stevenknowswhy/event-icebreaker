@@ -30,6 +30,40 @@ Visual Card immediately, and can optionally copy an AI-ready prompt.
   `localStorage` on the sender's device until the user clears it, the shared
   payload lives only in the URL, and the sidecar keeps no state.
 
+## Optional: Monad testnet attestation (default off)
+
+The dossier can optionally be sealed on Monad testnet — the blueprint's
+"Monad moment", shipped as a separate, droppable PR. The flag is OFF by
+default; with it off, zero attestation code loads and zero chain requests
+are made, and the app is byte-for-byte the privacy-first match flow.
+
+What actually goes onchain: a value-zero, self-send transaction whose
+calldata is exactly the digest — one opaque 32-byte hash, and nothing else.
+The digest is SHA-256 over the canonical serialization of both shared
+profiles' digests plus the score band plus a fresh 32-byte random nonce. The
+nonce itself never touches the chain, which is what keeps even a guessed
+dossier from being confirmed against the onchain value; the receipt (tx hash
++ nonce) is rendered on this device only, and lets the participants verify
+their own record offline. Wallet provisioning and testnet funding are the
+user's responsibility; the app never creates, stores, or transmits a private
+key — the injected browser wallet (EIP-1193) signs, and the public testnet
+RPC is used for the chain pre-flight and receipt confirmation.
+
+Environment variables (all build-time `NEXT_PUBLIC_*`, see `.env.example`):
+
+| Variable | Default | Purpose |
+| --- | --- | --- |
+| `NEXT_PUBLIC_MINT_MODE` | unset (off) | `on`, `true`, or `1` enables the attestation entry point |
+| `NEXT_PUBLIC_MINT_RPC_URL` | `https://testnet-rpc.monad.xyz` | Optional RPC override (official public endpoint, chain id 10143) |
+| `NEXT_PUBLIC_MINT_EXPLORER_URL` | `https://testnet.monadvision.com` | Optional block-explorer base for receipt links |
+
+Every attestation failure is a typed quiet outcome inside its own card — no
+wallet, user rejection, wrong chain, unreachable RPC, revert, or timeout ever
+touches the match flow. Because the feature is one module
+(`lib/attestation.ts`) loaded only through the flag gate
+(`lib/mint-mode.ts`), dropping it is a matter of not setting the flag — no
+other surface changes.
+
 ## Routes
 
 - `/` — Sender Mode
