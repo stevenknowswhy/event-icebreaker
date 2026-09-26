@@ -98,6 +98,68 @@ def test_guardrails_response_shape(client, schema):
     assert set(body["tone"]) == {"present", "confidence"}
 
 
+# --- /v1/profile-guardrails wire contract (profile-guardrails.schema.json) ---
+# The known drift this pins: a client posting a per-field map {fields: {...}}
+# used to 422 on every real request while both suites stayed green, because
+# only the match-dossier shape was under contract. Request AND response are
+# now pinned; if either side drifts, these fail loudly.
+
+GUARDRAILS_SCHEMA_PATH = (
+    Path(__file__).resolve().parent.parent / "contract" / "profile-guardrails.schema.json"
+)
+
+
+@pytest.fixture
+def guardrails_schema() -> dict:
+    return json.loads(GUARDRAILS_SCHEMA_PATH.read_text())
+
+
+def test_guardrails_request_validates_against_schema(guardrails_schema):
+    request = {"text": "hard-working engineer"}
+    jsonschema.validate(instance=request, schema=guardrails_schema["$defs"]["request"])
+
+
+def test_guardrails_rejects_the_per_field_map(client, guardrails_schema):
+    # The drifted client shape must never come back as a 200: the strict
+    # request model rejects the extra "fields" key with a 422.
+    response = client.post(
+        "/v1/profile-guardrails",
+        json={"fields": {"canHelp": "hard-working engineer"}},
+    )
+    assert response.status_code == 422
+
+
+def test_guardrails_rejects_extra_request_keys(client, guardrails_schema):
+    response = client.post(
+        "/v1/profile-guardrails",
+        json={"text": "engineer", "field": "canHelp"},
+    )
+    assert response.status_code == 422
+
+
+def test_guardrails_rejects_oversized_text(client, guardrails_schema):
+    response = client.post("/v1/profile-guardrails", json={"text": "x" * 2001})
+    assert response.status_code == 422
+
+
+def test_guardrails_response_validates_against_schema(client, guardrails_schema):
+    response = client.post("/v1/profile-guardrails", json={"text": "hard-working engineer"})
+    assert response.status_code == 200
+    jsonschema.validate(instance=response.json(), schema=guardrails_schema)
+
+
+def test_guardrails_contact_hit_response_validates_against_schema(client, guardrails_schema):
+    response = client.post(
+        "/v1/profile-guardrails",
+        json={"text": "reach me at vera@example.com anytime"},
+    )
+    assert response.status_code == 200
+    body = response.json()
+    jsonschema.validate(instance=body, schema=guardrails_schema)
+    assert body["contact"]["present"] is True
+    assert "email" in body["contact"]["matched"]
+
+
 def test_escalated_payload_still_fits_contract(investor_founder, schema):
     sender, receiver = investor_founder
     escalator = FakeAgent(

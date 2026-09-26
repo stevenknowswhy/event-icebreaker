@@ -28,23 +28,27 @@ const origin = `http://127.0.0.1:${PORT}`;
 const SIDECAR_BASE = "http://127.0.0.1:59999";
 
 /**
- * Mini mock of POST /v1/profile-guardrails: answers for exactly the requested
- * fields — contact flagged on anything that looks like an email or URL, tone
- * flagged on a phrase that reads wrong in a professional room.
+ * Mini mock of POST /v1/profile-guardrails — the sidecar's real contract:
+ * one whole-text `{ text }` request in, one `{ contact, tone }` verdict pair
+ * out (contact carrying the deterministic `matched` detector list). Contact
+ * is flagged on anything that looks like an email or URL, tone on a phrase
+ * that reads wrong in a professional room.
  */
 const guardrailsMock = (route) => {
-  const body = route.request().postDataJSON();
-  const results = {};
-  for (const [field, text] of Object.entries(body?.fields ?? {})) {
-    results[field] = {
-      contact: /@|https?:\/\//i.test(String(text)),
-      tone: /adrenaline junkie/i.test(String(text)),
-    };
-  }
+  const { text } = route.request().postDataJSON() ?? {};
+  const contact = /@|https?:\/\//i.test(String(text));
+  const tone = /adrenaline junkie/i.test(String(text));
   return route.fulfill({
     status: 200,
     contentType: "application/json",
-    body: JSON.stringify({ results }),
+    body: JSON.stringify({
+      contact: {
+        present: contact,
+        confidence: contact ? 1 : 0.1,
+        matched: contact ? ["email"] : [],
+      },
+      tone: { present: tone, confidence: tone ? 0.9 : 0.05 },
+    }),
   });
 };
 

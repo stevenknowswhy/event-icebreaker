@@ -16,7 +16,8 @@
  *      advisories + real /v1/profile-guardrails verdicts, consent-gated save
  *   2. sender share — QR, share URL, Connection String, PNG card download
  *   3. receiver no-profile doors — speed door teaser (reserved), wizard
- *      fallback keeps the sender card visible
+ *      fallback keeps the sender card visible; a planted email in a wizard
+ *      field draws a real sidecar contact banner that clears when fixed
  *   4. receiver wizard → consent → real dossier request (loading card,
  *      then confident + ladder OR escalated + AI-prompt handoff)
  *   5. --down-only: with the sidecar stopped, the real refused connection
@@ -35,8 +36,13 @@ import { chromium } from "playwright";
 const downOnly = process.argv.includes("--down-only");
 const PORT = Number(process.env.DEMO_APP_PORT || 3390);
 const origin = `http://127.0.0.1:${PORT}`;
+// Down-only must prove degradation against a sidecar that CANNOT answer —
+// not one that merely happens to be stopped. Default to a port nothing
+// listens on (connection refused is instant), so the phase is deterministic
+// whether or not a real sidecar is running on 8080 right now.
 const SIDECAR_BASE = (
-  process.env.DEMO_SIDECAR_URL || "http://127.0.0.1:8080"
+  process.env.DEMO_SIDECAR_URL ||
+  (downOnly ? "http://127.0.0.1:9" : "http://127.0.0.1:8080")
 ).replace(/\/+$/, "");
 const WARM_START_FILE = process.env.DEMO_WARM_START_FILE || "/tmp/laya-warmstart.txt";
 
@@ -144,10 +150,50 @@ const results = {};
 // that the degradation contract expects.
 const font404s = [];
 const networkErrors = [];
-// Known live defect (findings report, HIGH): the app's guardrails client posts
-// per-field maps the real sidecar rejects with 422 — every real request fails
-// and the app silently skips. Recorded as evidence, not a script failure.
+// Guardrail requests that 422 — the contract drift this flow exists to
+// disprove. The full-phase gate below asserts zero; any hit means the
+// client and the sidecar have drifted apart again.
 const guardrails422s = [];
+
+// Guardrail request traffic per page, for the drain helper below. Every
+// draft change re-checks ALL non-empty fields as one sequential fan-out
+// (all-or-nothing on the client) and the sidecar serves predictions under
+// one lock — queued requests blow their 2.5 s abort and the check
+// degrades. Real presenters pause between fields; the dogfood must too.
+const guardrailTraffic = new WeakMap();
+
+function watchGuardrailTraffic(page) {
+  const state = { inFlight: 0 };
+  guardrailTraffic.set(page, state);
+  const track = (delta) => (request) => {
+    if (request.url().includes("/v1/profile-guardrails")) {
+      // Some requests emit finished/failed twice (cache hops); a raw counter
+      // leaks negative and the drain never sees zero. Clamp at the floor.
+      state.inFlight = Math.max(0, state.inFlight + delta);
+    }
+  };
+  page.on("request", track(1));
+  page.on("requestfinished", track(-1));
+  page.on("requestfailed", track(-1));
+}
+
+/** Wait for up to 20 s total for 3 s with no guardrail request in flight.
+    Bounded by design — a drain that gives up still lets the beats' own
+    assertions carry the verdict; a drain that hangs is a diagnosis black hole. */
+async function drainGuardrails(page) {
+  if (!guardrailTraffic.has(page)) watchGuardrailTraffic(page);
+  const state = guardrailTraffic.get(page);
+  const deadline = Date.now() + 20_000;
+  let quietQuarters = 0;
+  while (quietQuarters < 12 && Date.now() < deadline) {
+    await new Promise((resolve) => setTimeout(resolve, 250));
+    quietQuarters = state.inFlight === 0 ? quietQuarters + 1 : 0;
+  }
+  if (state.inFlight !== 0) {
+    console.log(`drain: gave up with ${state.inFlight} guardrail request(s) in flight`);
+  }
+}
+
 const watchPage = (page) => {
   page.on("console", (message) => {
     if (message.type() !== "error" && message.type() !== "warning") return;
@@ -213,11 +259,22 @@ try {
           try {
             const response = await request.response();
             const body = await response.json();
+            // Whole-text contract: the response judges the one {text} the
+            // request carried — attribute it back by matching planted text.
+            let requestText = "";
+            try {
+              requestText = JSON.parse(request.postData() ?? "{}").text ?? "";
+            } catch {
+              // unparseable body — the status column still records the verdict
+            }
             measurements.guardrails.push({
               status: response.status(),
-              flagged: Object.entries(body?.results ?? {})
-                .filter(([, v]) => v && (v.contact || v.tone))
-                .map(([field, v]) => `${field}:${v.contact ? "contact" : ""}${v.tone ? "tone" : ""}`),
+              contact: body?.contact?.present ?? null,
+              tone: body?.tone?.present ?? null,
+              matched: Array.isArray(body?.contact?.matched)
+                ? body.contact.matched.join("+")
+                : null,
+              planted: /ada@example\.com|adrenaline/i.test(requestText),
             });
           } catch {
             measurements.guardrails.push({ status: "unreadable" });
@@ -227,6 +284,7 @@ try {
     };
 
     // ---------- 1. Sender: speed setup with the real parser + guardrails ----
+    console.log("beat 1: sender speed setup…");
     const senderContext = await browser.newContext({ viewport });
     await senderContext.grantPermissions(
       ["clipboard-read", "clipboard-write"],
@@ -335,6 +393,7 @@ try {
     results.senderSpeedSetup = "passed";
 
     // ---------- 2. Sender share: QR, URL, Connection String, PNG ----------
+    console.log("beat 2: sender share…");
     await sender.getByRole("button", { name: /Refresh share QR/i }).click();
     assert.equal(await sender.locator(".qr-frame svg").count(), 1);
     await sender
@@ -396,13 +455,16 @@ try {
     assert.equal(await speedDoor.count(), 1);
     assert.equal(await speedDoor.isEnabled(), true);
     await receiver.screenshot({ path: "artifacts/dogfood-04-receiver-doors.png" });
+    console.log("beat 3: receiver doors ok — opening the wizard…");
 
     await receiver
       .getByRole("button", { name: "Use the five-step form" })
       .click();
     await receiver.locator(".setup-panel").waitFor();
+    console.log("beat 3: wizard panel open — filling receiver profile…");
     results.wizardKeepsSenderCard =
       (await receiver.locator(".visual-card h2").count()) > 0;
+    console.log("beat 3: checking storage is untouched…");
     assert.equal(
       await receiver.evaluate(() =>
         localStorage.getItem("event-icebreaker.profile.v1"),
@@ -410,6 +472,7 @@ try {
       null,
       "open wizard must not write storage",
     );
+    console.log("beat 3: filling the wizard fields…");
 
     await receiver.getByLabel("Name").fill(RECEIVER_PROFILE.name);
     await receiver.getByLabel("Role or one-line identity").fill(RECEIVER_PROFILE.role);
@@ -417,7 +480,49 @@ try {
     await receiver.getByLabel("Current Spark").fill(RECEIVER_PROFILE.spark);
     await receiver.getByLabel("One sentence of context").fill(RECEIVER_PROFILE.sparkDetails);
     await receiver.getByRole("button", { name: "Next question" }).click();
-    await receiver.getByLabel("I can help with…").fill(RECEIVER_PROFILE.canHelp);
+    // ---------- 3b. Real guardrail beat: planted email → sidecar banner ----
+    // The HIGH dogfood finding: these requests 422ed (per-field map vs the
+    // sidecar's {text} contract) and the advisory never rendered. With the
+    // contract fixed, the sidecar's own contact verdict must render on the
+    // field — and clear when the text is fixed.
+    //
+    // Drain first: every draft change re-checks ALL non-empty fields as one
+    // sequential fan-out (all-or-nothing on the client), and canHelp sits at
+    // the tail. Queued behind the previous wave, its request blows its own
+    // 2.5 s abort and the whole check degrades — a real presenter types far
+    // slower, so mirror the human pause before planting.
+    await drainGuardrails(receiver);
+    console.log("beat 3b: planting the email, expecting the sidecar banner…");
+    await receiver
+      .getByLabel("I can help with…")
+      .fill("Reach me at ada@example.com");
+    await receiver
+      .locator(".field-advisory")
+      .filter({ hasText: /contact details/i })
+      .first()
+      .waitFor({ timeout: 8_000 })
+      .catch((error) => {
+        const state = guardrailTraffic.get(receiver);
+        console.error(
+          "beat 3b banner never rendered — guardrail request trace:",
+          JSON.stringify(state, null, 1),
+        );
+        throw error;
+      });
+    await receiver.screenshot({
+      path: "artifacts/dogfood-05b-guardrail-flag.png",
+      fullPage: true,
+    });
+    await receiver
+      .getByLabel("I can help with…")
+      .fill(RECEIVER_PROFILE.canHelp);
+    await receiver
+      .locator(".field-advisory")
+      .filter({ hasText: /contact details/i })
+      .first()
+      .waitFor({ state: "hidden", timeout: 8_000 });
+    assert.equal(await receiver.locator(".field-advisory").count(), 0);
+    results.sidecarGuardrailBanner = "passed";
     await receiver.getByRole("button", { name: "Next question" }).click();
     await receiver.getByLabel("I’d like to meet…").fill(RECEIVER_PROFILE.lookingFor);
     await receiver.getByRole("button", { name: "Next question" }).click();
@@ -428,6 +533,11 @@ try {
     await receiver.getByLabel("Communication style").fill(RECEIVER_PROFILE.communicationStyle);
     await receiver.getByLabel("Fun fact or invitation").fill(RECEIVER_PROFILE.funFact);
     await receiver.screenshot({ path: "artifacts/dogfood-05-receiver-wizard.png" });
+    // ---------- 3c. Drain the debounced sidecar checks before the read -----
+    // The deep call must not queue behind the wizard's own guardrail checks
+    // on the sidecar's one-model lock — a real presenter pauses here.
+    await drainGuardrails(receiver);
+    console.log("beat 4: requesting the deep dossier…");
     await receiver.getByRole("button", { name: "Show my match read" }).click();
 
     // ---------- 4. Real dossier: loading → confident OR escalated ----------
@@ -670,8 +780,31 @@ try {
         `real sidecar dossier took ${ms} ms — over the client's 2.5 s abort`,
       );
     }
+
+    // Guardrail contract gate: every real guardrail request must have been
+    // accepted by the sidecar (the drifted client 422ed on all of them), and
+    // the planted email must have drawn a sidecar-side contact verdict.
+    assert.ok(
+      measurements.guardrails.some(
+        (check) => check.planted && check.contact === true,
+      ),
+      "the planted email must draw a sidecar-side contact verdict",
+    );
+    for (const check of measurements.guardrails) {
+      assert.equal(
+        check.status,
+        200,
+        `guardrail request drifted: ${JSON.stringify(check)}`,
+      );
+    }
+    assert.equal(
+      guardrails422s.length,
+      0,
+      "no guardrail request may 422 — client and sidecar have drifted",
+    );
   } else {
     // ---------- 5. Sidecar stopped: real degradation to the local estimate --
+    console.log("beat 5: sidecar stopped — checking the local-estimate fallback…");
     const context = await browser.newContext({ viewport });
     await context.addInitScript((profile) => {
       window.localStorage.setItem(

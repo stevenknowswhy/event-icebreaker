@@ -1,5 +1,9 @@
 import { TEXT_LIMITS, type FullProfile } from "./icebreaker.ts";
-import { getSidecarUrl } from "./laya-client.ts";
+import {
+  checkProfileText,
+  type GuardrailFieldVerdict,
+  type GuardrailFieldVerdicts,
+} from "./guardrails.ts";
 
 /**
  * AI speed setup (blueprint art_gdKW4J5q, item 4): the primary setup door.
@@ -13,11 +17,6 @@ import { getSidecarUrl } from "./laya-client.ts";
 
 /** Paste size cap — a full ten-field block is well under this. */
 export const MAX_PASTE_LENGTH = 6_000;
-
-const GUARDRAILS_ENDPOINT_PATH = "/v1/profile-guardrails";
-const GUARDRAILS_TIMEOUT_MS = 2_500;
-const GUARDRAILS_MAX_FIELDS = 10;
-const GUARDRAILS_FIELD_LENGTH = 4_000;
 
 /** Neutral OCEAN defaults for a fresh draft; the user adjusts in review. */
 const NEUTRAL_PERSONALITY: FullProfile["personality"] = [0.5, 0.5, 0.5, 0.5, 0.5];
@@ -567,8 +566,8 @@ export function parseSpeedSetupPaste(raw: string): SpeedSetupParseResult {
   return { ok: false, reason: "unrecognized", message: UNRECOGNIZED_MESSAGE };
 }
 
-export type GuardrailVerdict = { contact: boolean; tone: boolean };
-export type GuardrailVerdicts = Record<string, GuardrailVerdict>;
+export type GuardrailVerdict = GuardrailFieldVerdict;
+export type GuardrailVerdicts = GuardrailFieldVerdicts;
 
 export type GuardrailOptions = {
   /** Overrides the env-configured sidecar base URL. `null` disables the call. */
@@ -578,67 +577,23 @@ export type GuardrailOptions = {
 };
 
 /**
- * Lenient shape check for the guardrails response: per-field yes/no judgments
- * for contact details and professional tone. Invalid entries are skipped —
- * this is an advisory layer, never a blocker.
- */
-export function validateGuardrailVerdicts(value: unknown): GuardrailVerdicts | null {
-  if (!isRecord(value) || !isRecord(value.results)) return null;
-  const verdicts: GuardrailVerdicts = {};
-  for (const [field, raw] of Object.entries(value.results)) {
-    if (!isRecord(raw)) continue;
-    if (typeof raw.contact !== "boolean" || typeof raw.tone !== "boolean") {
-      continue;
-    }
-    verdicts[field] = { contact: raw.contact, tone: raw.tone };
-  }
-  return verdicts;
-}
-
-/**
  * Asks the sidecar's `/v1/profile-guardrails` for two yes/no judgments per
  * free-text field (pasted contact info, tone that reads wrong in a
- * professional room). Stateless, advisory, and per the degradation contract:
- * resolves `null` on any failure — URL unset, fetch rejection, timeout,
- * non-2xx, malformed body — so callers skip advisories silently.
+ * professional room), delegating to the same strict client the save-time
+ * hook uses — one `{ text }` request per field, the sidecar's whole-text
+ * contract, so the ingest path can never drift from the wire again.
+ * Stateless, advisory, and per the degradation contract: resolves `null`
+ * on any failure — URL unset, fetch rejection, timeout, non-2xx, malformed
+ * body — so callers skip advisories silently.
  */
 export async function checkSpeedSetupGuardrails(
   fields: Record<string, string>,
   options: GuardrailOptions = {},
 ): Promise<GuardrailVerdicts | null> {
-  const baseUrl =
-    options.sidecarUrl !== undefined ? options.sidecarUrl : getSidecarUrl();
-  if (!baseUrl) return null;
-
-  const entries = Object.entries(fields)
-    .filter(([, value]) => typeof value === "string" && value.trim().length > 0)
-    .slice(0, GUARDRAILS_MAX_FIELDS)
-    .map(
-      ([field, value]) =>
-        [field, value.slice(0, GUARDRAILS_FIELD_LENGTH)] as const,
-    );
-  if (!entries.length) return {};
-
-  const fetchImpl = options.fetchImpl ?? fetch;
-  const controller = new AbortController();
-  const timer = setTimeout(
-    () => controller.abort(),
-    options.timeoutMs ?? GUARDRAILS_TIMEOUT_MS,
-  );
-
-  try {
-    const response = await fetchImpl(`${baseUrl}${GUARDRAILS_ENDPOINT_PATH}`, {
-      method: "POST",
-      headers: { "content-type": "application/json" },
-      body: JSON.stringify({ fields: Object.fromEntries(entries) }),
-      signal: controller.signal,
-    });
-    if (!response.ok) return null;
-    return validateGuardrailVerdicts(await response.json());
-  } catch {
-    // Degradation contract: the sidecar being down is an expected state.
-    return null;
-  } finally {
-    clearTimeout(timer);
-  }
+  const result = await checkProfileText(fields, {
+    sidecarUrl: options.sidecarUrl,
+    fetchImpl: options.fetchImpl,
+    timeoutMs: options.timeoutMs,
+  });
+  return result.status === "ok" ? result.verdicts : null;
 }

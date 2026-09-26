@@ -5,7 +5,7 @@ import type { FullProfile } from "../lib/icebreaker.ts";
 import {
   checkProfileText,
   profileGuardrailFields,
-  validateGuardrailFieldVerdicts,
+  validateGuardrailTextVerdicts,
   verdictsToAdvisories,
 } from "../lib/guardrails.ts";
 
@@ -16,6 +16,20 @@ const jsonResponse = (body: unknown, status = 200): Response =>
   });
 
 const SIDECAR_BASE = "https://scorer.example.test";
+
+/** The sidecar's real whole-text response shape (app/schemas.py GuardrailsOut). */
+const textVerdict = (
+  contact: boolean,
+  tone: boolean,
+  matched: string[] = [],
+): Record<string, unknown> => ({
+  contact: {
+    present: contact,
+    confidence: contact ? 1 : 0.1,
+    matched,
+  },
+  tone: { present: tone, confidence: tone ? 0.9 : 0.05 },
+});
 
 const hangingFetch = (
   _url: RequestInfo | URL,
@@ -44,50 +58,80 @@ function draftProfile(overrides: Partial<FullProfile> = {}): FullProfile {
   };
 }
 
-test("checkProfileText posts the fields and returns validated verdicts", async () => {
-  let capturedUrl = "";
-  let capturedBody: unknown;
+test("checkProfileText sends one {text} request per non-empty field", async () => {
+  const captured: Array<{ url: string; body: unknown }> = [];
   const result = await checkProfileText(
-    { canHelp: "Prototyping", spark: "" },
+    { canHelp: "Prototyping", spark: "   ", funFact: "Ask me about tarps" },
     {
       sidecarUrl: SIDECAR_BASE,
       fetchImpl: async (url, init) => {
-        capturedUrl = String(url);
-        capturedBody = JSON.parse(String(init?.body ?? "{}"));
-        return jsonResponse({
-          results: { canHelp: { contact: false, tone: true } },
-        });
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        captured.push({ url: String(url), body });
+        return jsonResponse(textVerdict(false, false));
       },
     },
   );
 
+  assert.equal(result.status, "ok");
   assert.deepEqual(result, {
     status: "ok",
-    verdicts: { canHelp: { contact: false, tone: true } },
+    verdicts: {
+      canHelp: { contact: false, tone: false },
+      funFact: { contact: false, tone: false },
+    },
   });
-  assert.equal(capturedUrl, `${SIDECAR_BASE}/v1/profile-guardrails`);
   assert.deepEqual(
-    (capturedBody as { fields: Record<string, string> }).fields,
-    { canHelp: "Prototyping" },
+    captured.map((request) => request.body),
+    [{ text: "Prototyping" }, { text: "Ask me about tarps" }],
+  );
+  assert.ok(
+    captured.every(
+      (request) => request.url === `${SIDECAR_BASE}/v1/profile-guardrails`,
+    ),
   );
 });
 
-test("checkProfileText trims empty fields and caps oversized values", async () => {
-  let capturedBody: unknown;
+test("checkProfileText maps each whole-text verdict back to its field", async () => {
+  const result = await checkProfileText(
+    { canHelp: "Reach me at maya@bridge.dev", lookingFor: "Partners" },
+    {
+      sidecarUrl: SIDECAR_BASE,
+      fetchImpl: async (_url, init) => {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        return jsonResponse(
+          body.text.includes("@")
+            ? textVerdict(true, false, ["email"])
+            : textVerdict(false, false),
+        );
+      },
+    },
+  );
+  assert.deepEqual(result, {
+    status: "ok",
+    verdicts: {
+      canHelp: { contact: true, tone: false },
+      lookingFor: { contact: false, tone: false },
+    },
+  });
+});
+
+test("checkProfileText truncates fields to the sidecar's 2000-char cap", async () => {
+  const captured: string[] = [];
   await checkProfileText(
     { canHelp: "   ", spark: "x".repeat(4_100) },
     {
       sidecarUrl: SIDECAR_BASE,
       fetchImpl: async (_url, init) => {
-        capturedBody = JSON.parse(String(init?.body ?? "{}"));
-        return jsonResponse({ results: { spark: { contact: false, tone: false } } });
+        captured.push((JSON.parse(String(init?.body ?? "{}")) as { text: string }).text);
+        return jsonResponse(textVerdict(false, false));
       },
     },
   );
 
-  const fields = (capturedBody as { fields: Record<string, string> }).fields;
-  assert.deepEqual(Object.keys(fields), ["spark"]);
-  assert.equal(fields.spark.length, 4_000);
+  // The sidecar 422s text beyond 2000 chars — the truncation keeps one
+  // oversized field from turning the whole check unavailable.
+  assert.deepEqual(captured.length, 1);
+  assert.equal(captured[0].length, 2_000);
 });
 
 test("checkProfileText resolves ok with no verdicts when every field is empty", async () => {
@@ -105,14 +149,56 @@ test("checkProfileText resolves ok with no verdicts when every field is empty", 
 
 test("checkProfileText fails closed on a malformed sidecar response", async () => {
   const cases: Array<[string, unknown]> = [
-    ["missing requested field", { results: {} }],
-    ["unexpected result field", { results: { extra: { contact: false, tone: false } } }],
-    ["non-boolean verdict", { results: { canHelp: { contact: "yes", tone: false } } }],
-    ["extra verdict key", { results: { canHelp: { contact: false, tone: false, note: "x" } } }],
-    ["missing verdict key", { results: { canHelp: { contact: false } } }],
-    ["results is not a record", { results: "nope" }],
-    ["missing results", { verdicts: {} }],
-    ["extra top-level field", { results: {}, source: "drifted" }],
+    ["missing contact verdict", { tone: { present: false, confidence: 0.1 } }],
+    [
+      "missing tone verdict",
+      { contact: { present: false, confidence: 0.1, matched: [] } },
+    ],
+    ["contact is not a record", { contact: "no", tone: { present: false, confidence: 0.1 } }],
+    [
+      "non-boolean present",
+      {
+        contact: { present: "no", confidence: 0.1, matched: [] },
+        tone: { present: false, confidence: 0.1 },
+      },
+    ],
+    [
+      "extra top-level field",
+      { ...textVerdict(false, false), source: "drifted" },
+    ],
+    [
+      "extra verdict key",
+      {
+        contact: { present: false, confidence: 0.1, matched: [], note: "x" },
+        tone: { present: false, confidence: 0.1 },
+      },
+    ],
+    [
+      "missing verdict key",
+      { contact: { present: false, matched: [] }, tone: { present: false, confidence: 0.1 } },
+    ],
+    [
+      "confidence out of range",
+      {
+        contact: { present: false, confidence: 1.5, matched: [] },
+        tone: { present: false, confidence: 0.1 },
+      },
+    ],
+    [
+      "matched is not an array",
+      {
+        contact: { present: false, confidence: 0.1, matched: "email" },
+        tone: { present: false, confidence: 0.1 },
+      },
+    ],
+    [
+      "matched item is not a string",
+      {
+        contact: { present: false, confidence: 0.1, matched: [3] },
+        tone: { present: false, confidence: 0.1 },
+      },
+    ],
+    ["missing everything", { verdicts: {} }],
   ];
 
   for (const [label, body] of cases) {
@@ -124,20 +210,28 @@ test("checkProfileText fails closed on a malformed sidecar response", async () =
   }
 });
 
-test("validateGuardrailFieldVerdicts accepts the exact contract shape", () => {
-  const verdicts = validateGuardrailFieldVerdicts(
+test("one drifting field degrades the whole check — no half-warnings", async () => {
+  const result = await checkProfileText(
+    { canHelp: "Prototyping", lookingFor: "Partners" },
     {
-      results: {
-        canHelp: { contact: true, tone: false },
-        lookingFor: { contact: false, tone: true },
+      sidecarUrl: SIDECAR_BASE,
+      fetchImpl: async (_url, init) => {
+        const body = JSON.parse(String(init?.body ?? "{}"));
+        if (body.text === "Partners") {
+          return jsonResponse({ contact: { present: false, confidence: 0.1 } });
+        }
+        return jsonResponse(textVerdict(false, false));
       },
     },
-    ["canHelp", "lookingFor"],
   );
-  assert.deepEqual(verdicts, {
-    canHelp: { contact: true, tone: false },
-    lookingFor: { contact: false, tone: true },
-  });
+  assert.deepEqual(result, { status: "unavailable" });
+});
+
+test("validateGuardrailTextVerdicts accepts the exact contract shape", () => {
+  const verdict = validateGuardrailTextVerdicts(
+    textVerdict(true, false, ["email", "url"]),
+  );
+  assert.deepEqual(verdict, { contact: true, tone: false });
 });
 
 test("checkProfileText resolves unavailable on every sidecar failure mode", async () => {
@@ -147,7 +241,7 @@ test("checkProfileText resolves unavailable on every sidecar failure mode", asyn
     ["sidecar URL unset", { sidecarUrl: null, fetchImpl: async () => { throw new Error("must not be called"); } }],
     ["fetch rejection", { sidecarUrl: SIDECAR_BASE, fetchImpl: async () => { throw new Error("offline"); } }],
     ["timeout", { sidecarUrl: SIDECAR_BASE, timeoutMs: 25, fetchImpl: hangingFetch }],
-    ["non-2xx", { sidecarUrl: SIDECAR_BASE, fetchImpl: async () => jsonResponse({ results: {} }, 503) }],
+    ["non-2xx", { sidecarUrl: SIDECAR_BASE, fetchImpl: async () => jsonResponse({}, 503) }],
     ["non-JSON body", { sidecarUrl: SIDECAR_BASE, fetchImpl: async () => new Response("<html>", { status: 200 }) }],
   ];
 

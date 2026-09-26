@@ -12,6 +12,10 @@ const eslintConfig = defineConfig([
     "out/**",
     "build/**",
     "next-env.d.ts",
+    // vinext build output (npm run build / the dogfood driver builds).
+    "dist/**",
+    // laya-sidecar's local venv (per its README) ships bundled .js/.mjs.
+    "**/.venv/**",
   ]),
 ]);
 
