@@ -24,6 +24,7 @@ export function ProfileSetup({
   onChange,
   onFinish,
   saveState,
+  finishLabel = "Refresh my share card",
 }: {
   profile: FullProfile;
   onChange: <K extends keyof FullProfile>(
@@ -32,6 +33,8 @@ export function ProfileSetup({
   ) => void;
   onFinish: () => void;
   saveState: string;
+  /** Receiver flows finish into a match read instead of a share card. */
+  finishLabel?: string;
 }) {
   const [step, setStep] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -228,7 +231,7 @@ export function ProfileSetup({
             onClick={onFinish}
             disabled={!profile.name.trim()}
           >
-            Refresh my share card
+            {finishLabel}
           </button>
         )}
       </div>
