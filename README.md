@@ -124,11 +124,14 @@ Needs: the sidecar host + its HTTPS domain, and the model checkpoint cache
 volume. No other secrets.
 
 **App host (Cloudflare Workers).** The runtime is Cloudflare-targeted
-(vinext), but the repo does not ship a wrangler config yet — wiring the
-deploy is not done. Required at deploy: a wrangler config for this project
-and the build-time `NEXT_PUBLIC_LAYA_URL` pointed at the sidecar's public
-HTTPS URL. Needs: Cloudflare account access (user-provided) and the sidecar
-public URL. Optional bindings (D1/R2) are not required by the current code.
+(vinext); the committed `wrangler.jsonc` is the deploy config —
+`npm run build` then `npx wrangler deploy` (the account comes from the
+`CLOUDFLARE_ACCOUNT_ID` env var; the config itself stays account-agnostic).
+Required at deploy: the build-time `NEXT_PUBLIC_LAYA_URL` pointed at the
+sidecar's public HTTPS URL — it is inlined at build time, so rebuild and
+redeploy to change it. Needs: Cloudflare account access (user-provided) and
+the sidecar public URL. Optional bindings (D1/R2) are not required by the
+current code.
 
 **Flags.** The optional Monad testnet seal ships behind a default-off flag
 (separate PR); enable it only after that PR is merged and the wallet is

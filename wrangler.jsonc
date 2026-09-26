@@ -1,0 +1,17 @@
+// Cloudflare Workers deploy config — the minimal one `vinext deploy` generates
+// (committing it keeps deploys deterministic; see README "Runbook (deploying)").
+// Account comes from CLOUDFLARE_ACCOUNT_ID at deploy time; build-time
+// NEXT_PUBLIC_* env belongs in ignored .env* files, not here.
+{
+  "$schema": "node_modules/wrangler/config-schema.json",
+  "name": "event-icebreaker",
+  "compatibility_date": "2026-09-26",
+  "compatibility_flags": ["nodejs_compat"],
+  "main": "./worker/index.ts",
+  "assets": {
+    "directory": "dist/client",
+    "not_found_handling": "none",
+    "binding": "ASSETS"
+  },
+  "images": { "binding": "IMAGES" }
+}
