@@ -1701,3 +1701,365 @@ summary {
     min-height: 180px;
   }
 }
+
+/* ------------------------------------------------------------------ */
+/* Two-way match read (receiver dossier)                               */
+/* ------------------------------------------------------------------ */
+
+.match-section {
+  padding: 68px 0;
+}
+
+.match-section .step-label {
+  color: var(--violet);
+}
+
+.match-read-card {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 30px;
+  position: relative;
+}
+
+.match-read-card--loading {
+  align-items: center;
+  display: flex;
+  justify-content: center;
+  min-height: 220px;
+}
+
+.match-read-card__loading-text {
+  animation: match-pulse 1.4s ease-in-out infinite;
+  color: var(--muted);
+  font-size: 14px;
+}
+
+@keyframes match-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+
+  50% {
+    opacity: 0.45;
+  }
+}
+
+.match-read-card__head {
+  align-items: start;
+  display: flex;
+  gap: 16px;
+  justify-content: space-between;
+}
+
+.match-read-card__badge {
+  border: 1px solid rgba(107, 97, 255, 0.4);
+  border-radius: 999px;
+  color: var(--violet);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  letter-spacing: 0.08em;
+  padding: 6px 12px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.match-read-card__badge--local {
+  background: rgba(12, 13, 15, 0.06);
+  border-color: rgba(12, 13, 15, 0.3);
+  color: var(--ink);
+}
+
+.match-read-card__notice {
+  color: var(--muted);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 14px 0 0;
+  max-width: 560px;
+}
+
+.match-read-card__shape {
+  font-family: Georgia, serif;
+  font-size: 22px;
+  line-height: 1.4;
+  margin: 18px 0 0;
+  max-width: 640px;
+}
+
+.match-read-card__confidence {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  margin-left: 10px;
+  text-transform: uppercase;
+  white-space: nowrap;
+}
+
+.match-band {
+  align-items: center;
+  border: 1px solid transparent;
+  border-radius: 14px;
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px 16px;
+  margin: 22px 0 0;
+  padding: 16px 18px;
+}
+
+.match-band--strong {
+  background: var(--electric);
+}
+
+.match-band--some {
+  background: var(--electric-soft);
+}
+
+.match-band--low {
+  background: rgba(12, 13, 15, 0.05);
+  border-color: var(--line);
+}
+
+.match-band__label {
+  font-size: 17px;
+  font-weight: 800;
+  letter-spacing: -0.02em;
+}
+
+.match-band__reason {
+  color: rgba(12, 13, 15, 0.62);
+  flex: 1 1 240px;
+  font-size: 13px;
+  line-height: 1.5;
+  margin: 0;
+}
+
+.match-read-card__escalation {
+  background: rgba(107, 97, 255, 0.08);
+  border: 1px solid rgba(107, 97, 255, 0.3);
+  border-radius: 16px;
+  margin-top: 22px;
+  padding: 20px;
+}
+
+.match-read-card__escalation h3 {
+  font-size: 19px;
+  letter-spacing: -0.03em;
+  margin: 0 0 8px;
+}
+
+.match-read-card__escalation p {
+  color: #4d4f49;
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0 0 14px;
+  max-width: 560px;
+}
+
+.match-read-card__first-move {
+  background: var(--ink);
+  border-radius: 16px;
+  color: #fff;
+  margin-top: 22px;
+  padding: 22px;
+}
+
+.match-read-card__first-move .step-label {
+  color: var(--electric);
+}
+
+.match-read-card__move {
+  font-family: Georgia, serif;
+  font-size: 20px;
+  line-height: 1.45;
+  margin: 10px 0 0;
+  max-width: 640px;
+}
+
+.match-read-card__dimensions {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr;
+  list-style: none;
+  margin: 22px 0 0;
+  padding: 0;
+}
+
+.match-read-card__dimension {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.match-read-card__dimension header {
+  align-items: baseline;
+  display: flex;
+  gap: 10px;
+  justify-content: space-between;
+}
+
+.match-read-card__dimension h4 {
+  font-size: 14px;
+  letter-spacing: -0.01em;
+  margin: 0;
+}
+
+.match-read-card__dimension > p {
+  color: #3d3f3a;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 8px 0 0;
+}
+
+.match-read-card__evidence {
+  border-left: 2px solid rgba(107, 97, 255, 0.35);
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.6;
+  list-style: none;
+  margin: 10px 0 0;
+  padding: 0 0 0 12px;
+}
+
+.match-read-card__insights {
+  display: grid;
+  gap: 14px;
+  grid-template-columns: 1fr 1fr;
+  margin-top: 14px;
+}
+
+.match-insight {
+  background: var(--paper);
+  border: 1px solid var(--line);
+  border-radius: 14px;
+  padding: 16px 18px;
+}
+
+.match-insight h4 {
+  color: var(--violet);
+  font-size: 12px;
+  letter-spacing: 0.06em;
+  margin: 0;
+  text-transform: uppercase;
+}
+
+.match-insight__interest {
+  font-family: Georgia, serif;
+  font-size: 18px;
+  line-height: 1.4;
+  margin: 10px 0 0;
+}
+
+.match-insight__why {
+  color: var(--muted);
+  font-size: 12px;
+  line-height: 1.5;
+  margin: 6px 0 0;
+}
+
+.match-ladder-slot {
+  margin-top: 22px;
+}
+
+.match-ladder-slot__ribbon summary {
+  background: var(--electric-soft);
+  border: 1px solid rgba(12, 13, 15, 0.16);
+  border-radius: 999px;
+  cursor: pointer;
+  display: inline-block;
+  font-weight: 700;
+  padding: 10px 22px;
+}
+
+.match-ladder-slot__ribbon[open] summary {
+  border-radius: 14px 14px 0 0;
+}
+
+.match-ladder-slot__ribbon .microcopy {
+  padding: 12px 4px;
+}
+
+.match-read-card__footnote {
+  color: var(--muted);
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 10px;
+  margin-top: 24px;
+  text-transform: uppercase;
+}
+
+/* Setup doors — the receiver without a profile picks how to build theirs. */
+
+.setup-doors {
+  display: grid;
+  gap: 18px;
+  grid-template-columns: 1.1fr 0.9fr;
+}
+
+.setup-door {
+  background: var(--paper-strong);
+  border: 1px solid var(--line);
+  border-radius: 22px;
+  padding: 26px;
+}
+
+.setup-door--speed {
+  background:
+    radial-gradient(
+      circle at 88% 8%,
+      rgba(107, 97, 255, 0.16),
+      transparent 34%
+    ),
+    var(--paper-strong);
+}
+
+.setup-door .step-label {
+  color: var(--violet);
+}
+
+.setup-door h3 {
+  font-size: 22px;
+  letter-spacing: -0.03em;
+  margin: 12px 0 10px;
+}
+
+.setup-door > p:not(.step-label):not(.microcopy) {
+  color: #4d4f49;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 18px;
+  max-width: 420px;
+}
+
+.setup-door .microcopy {
+  margin: 14px 0 0;
+}
+
+/* The receiver's wizard rides in the match section, below the doors. */
+.match-section .setup-panel {
+  margin-top: 18px;
+}
+
+@media (max-width: 900px) {
+  .match-section {
+    padding: 52px 0;
+  }
+
+  .match-read-card {
+    padding: 22px;
+  }
+
+  .setup-doors,
+  .match-read-card__insights {
+    grid-template-columns: 1fr;
+  }
+
+  .match-read-card__shape {
+    font-size: 19px;
+  }
+
+  .match-read-card__confidence {
+    display: block;
+    margin: 6px 0 0;
+  }
+}

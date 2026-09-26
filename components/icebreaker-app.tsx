@@ -23,11 +23,41 @@ import {
   type ShareSettings,
   type SharedProfile,
 } from "../lib/icebreaker";
+import { requestMatchDossierResult, type MatchDossierResult } from "../lib/match";
+import { CopyButton, copyText } from "./copy-button";
 import { DemoMode } from "./demo-mode";
+import { MatchReadCard } from "./match-read-card";
 import { ProfileSetup } from "./profile-setup";
 
 const PROFILE_STORAGE_KEY = "event-icebreaker.profile.v1";
 const SETTINGS_STORAGE_KEY = "event-icebreaker.settings.v1";
+
+// The receiver's shared profile follows the openness settings they already
+// chose for themselves (falling back to the sender defaults) — the sidecar
+// never sees more than this receiver would share.
+const RECEIVER_DEFAULT_SETTINGS: ShareSettings = {
+  openness: "high",
+  intent: "networking",
+  includeSpark: true,
+};
+
+// The receiver's wizard starts empty on purpose: nothing is stored and no
+// dossier is requested until they review their draft and finish — the
+// consent moment.
+const EMPTY_RECEIVER_PROFILE: FullProfile = {
+  name: "",
+  role: "",
+  interests: [],
+  spark: "",
+  sparkDetails: "",
+  canHelp: "",
+  lookingFor: "",
+  values: [],
+  communicationStyle: "",
+  funFact: "",
+  personality: [0.5, 0.5, 0.5, 0.5, 0.5],
+};
+
 const QRCode =
   (
     QRCodeModule as unknown as {
@@ -48,27 +78,6 @@ const INTENT_LABELS: Record<Intent, string> = {
   dating: "Dating",
   general: "General",
 };
-
-async function copyText(text: string): Promise<void> {
-  if (navigator.clipboard && window.isSecureContext) {
-    try {
-      await navigator.clipboard.writeText(text);
-      return;
-    } catch {
-      // Some mobile browsers expose Clipboard API without granting it.
-    }
-  }
-
-  const textarea = document.createElement("textarea");
-  textarea.value = text;
-  textarea.style.position = "fixed";
-  textarea.style.opacity = "0";
-  document.body.appendChild(textarea);
-  textarea.select();
-  const copied = document.execCommand("copy");
-  textarea.remove();
-  if (!copied) throw new Error("Copying is unavailable in this browser.");
-}
 
 function VisualCard({ profile }: { profile: SharedProfile }) {
   const openness = Object.keys(OPENNESS_LEVELS).find(
@@ -123,39 +132,6 @@ function VisualCard({ profile }: { profile: SharedProfile }) {
         <span>⚡ Find the signal</span>
       </div>
     </article>
-  );
-}
-
-function CopyButton({
-  label,
-  value,
-  variant = "secondary",
-}: {
-  label: string;
-  value: string;
-  variant?: "primary" | "secondary" | "quiet";
-}) {
-  const [copied, setCopied] = useState(false);
-
-  async function handleCopy() {
-    try {
-      await copyText(value);
-      setCopied(true);
-      window.setTimeout(() => setCopied(false), 1800);
-    } catch {
-      setCopied(false);
-    }
-  }
-
-  return (
-    <button
-      className={`button button--${variant}`}
-      type="button"
-      onClick={handleCopy}
-      disabled={!value}
-    >
-      {copied ? "Copied ✓" : label}
-    </button>
   );
 }
 
@@ -478,14 +454,79 @@ function SenderMode() {
   );
 }
 
+function ReceiverSetupDoors({ onOpenWizard }: { onOpenWizard: () => void }) {
+  return (
+    <div className="setup-doors">
+      <div
+        className="setup-door setup-door--speed"
+        data-speed-setup-slot="reserved"
+      >
+        <p className="step-label">FASTEST · RECOMMENDED</p>
+        <h3>Let your AI introduce you.</h3>
+        <p>
+          Ask the AI you already use to draft your profile, paste it back,
+          review, and you are done in about a minute.
+        </p>
+        <button className="button button--primary" type="button" disabled>
+          Speed setup — opening soon
+        </button>
+        <p className="microcopy">The five-question wizard works right now.</p>
+      </div>
+      <div className="setup-door">
+        <p className="step-label">FIVE QUESTIONS · ABOUT 2 MIN</p>
+        <h3>Build it yourself.</h3>
+        <p>
+          Five short questions. Everything stays on this device until you
+          choose to share it.
+        </p>
+        <button
+          className="button button--secondary"
+          type="button"
+          onClick={onOpenWizard}
+        >
+          Open the wizard
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function ReceiverMode() {
   const [profile, setProfile] = useState<SharedProfile | null>(null);
   const [error, setError] = useState("");
   const [manualInput, setManualInput] = useState("");
   const [sourcePayload, setSourcePayload] = useState("");
+  const [receiverProfile, setReceiverProfile] = useState<FullProfile | null>(
+    null,
+  );
+  const [receiverSettings, setReceiverSettings] = useState<ShareSettings>(
+    RECEIVER_DEFAULT_SETTINGS,
+  );
+  const [wizardOpen, setWizardOpen] = useState(false);
+  const [draftProfile, setDraftProfile] = useState<FullProfile>(
+    EMPTY_RECEIVER_PROFILE,
+  );
+  // `match === null` renders as the loading card; the effect only sets state
+  // when a request resolves, so re-decodes refresh in place.
+  const [match, setMatch] = useState<MatchDossierResult | null>(null);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
+      try {
+        const savedProfile = localStorage.getItem(PROFILE_STORAGE_KEY);
+        if (savedProfile) {
+          setReceiverProfile(migrateStoredProfile(JSON.parse(savedProfile)));
+          const savedSettings = localStorage.getItem(SETTINGS_STORAGE_KEY);
+          if (savedSettings) {
+            setReceiverSettings({
+              ...RECEIVER_DEFAULT_SETTINGS,
+              ...JSON.parse(savedSettings),
+            } as ShareSettings);
+          }
+        }
+      } catch {
+        // A damaged local profile must not break the sender's card.
+      }
       try {
         const encoded = extractEncodedPayload(window.location.href);
         setSourcePayload(encoded);
@@ -500,6 +541,40 @@ function ReceiverMode() {
     }, 0);
     return () => window.clearTimeout(timer);
   }, []);
+
+  // The dossier request resolves for every sidecar state — unset URL,
+  // timeout, rejection, or a malformed response all degrade to the local
+  // estimate (lib/match.ts degradation contract), so this never throws.
+  useEffect(() => {
+    if (!profile || !receiverProfile) return;
+    let cancelled = false;
+    const receiverShared = createSharedProfile(
+      receiverProfile,
+      receiverSettings,
+    );
+    requestMatchDossierResult(profile, receiverShared).then((result) => {
+      if (!cancelled) setMatch(result);
+    });
+    return () => {
+      cancelled = true;
+    };
+  }, [profile, receiverProfile, receiverSettings]);
+
+  function updateDraftProfile<K extends keyof FullProfile>(
+    key: K,
+    value: FullProfile[K],
+  ) {
+    setDraftProfile((current) => ({ ...current, [key]: value }));
+  }
+
+  // The consent moment: nothing is stored — and no dossier is requested —
+  // until the receiver reviews their draft and finishes the wizard.
+  function finishReceiverWizard() {
+    if (!draftProfile.name.trim()) return;
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(draftProfile));
+    setReceiverProfile(draftProfile);
+    setWizardOpen(false);
+  }
 
   function decodeManual() {
     try {
@@ -583,6 +658,43 @@ function ReceiverMode() {
             <span>✓</span>
             Decoded on this device · nothing was uploaded
           </div>
+        </div>
+      </section>
+
+      <section className="match-section" aria-label="Two-way match">
+        <div className="shell">
+          <div className="section-heading section-heading--compact">
+            <div>
+              <p className="step-label">THE TWO-WAY READ</p>
+              <h2>How the two of you land.</h2>
+            </div>
+          </div>
+
+          {receiverProfile ? (
+            match ? (
+              <MatchReadCard
+                status="ready"
+                dossier={match.dossier}
+                source={match.source}
+                aiPrompt={prompt}
+              />
+            ) : (
+              <MatchReadCard status="loading" />
+            )
+          ) : (
+            <>
+              <ReceiverSetupDoors onOpenWizard={() => setWizardOpen(true)} />
+              {wizardOpen && (
+                <ProfileSetup
+                  profile={draftProfile}
+                  onChange={updateDraftProfile}
+                  onFinish={finishReceiverWizard}
+                  saveState="Draft — saved when you finish"
+                  finishLabel="Show my match read"
+                />
+              )}
+            </>
+          )}
         </div>
       </section>
 

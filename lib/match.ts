@@ -179,6 +179,31 @@ export function estimateLocalMatch(
   };
 }
 
+export type MatchDossierSource = "sidecar" | "local";
+
+export type MatchDossierResult = {
+  dossier: MatchDossier;
+  source: MatchDossierSource;
+};
+
+/**
+ * Tagged variant of `requestMatchDossier` for UIs that must distinguish the
+ * sidecar's read from the on-device fallback — the blueprint's receiver
+ * states need the difference (a sidecar-produced escalated dossier leads to
+ * the sharper-read handoff, a local estimate renders marked as an estimate).
+ * Same never-throw contract.
+ */
+export async function requestMatchDossierResult(
+  sender: SharedProfile,
+  receiver: SharedProfile,
+  options: DeepMatchOptions = {},
+): Promise<MatchDossierResult> {
+  const dossier = await deepMatch(sender, receiver, options);
+  return dossier
+    ? { dossier, source: "sidecar" }
+    : { dossier: estimateLocalMatch(sender, receiver), source: "local" };
+}
+
 /**
  * One-call entry for the UI: the sidecar dossier when healthy, otherwise the
  * honest local estimate. Resolves for every sidecar state — unset URL, fetch
@@ -190,6 +215,5 @@ export async function requestMatchDossier(
   receiver: SharedProfile,
   options: DeepMatchOptions = {},
 ): Promise<MatchDossier> {
-  const dossier = await deepMatch(sender, receiver, options);
-  return dossier ?? estimateLocalMatch(sender, receiver);
+  return (await requestMatchDossierResult(sender, receiver, options)).dossier;
 }
