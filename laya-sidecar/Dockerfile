@@ -13,10 +13,11 @@ ENV PIP_NO_CACHE_DIR=1 \
 
 WORKDIR /srv
 
-COPY requirements.txt .
+COPY requirements.txt requirements-dev.txt ./
 RUN pip install --index-url https://download.pytorch.org/whl/cpu --extra-index-url https://pypi.org/simple \
       torch==2.14.0+cpu \
- && pip install -r requirements.txt
+ && pip install -r requirements.txt \
+ && pip install -r requirements-dev.txt
 
 # Bake the English checkpoint (the launch default per the approved spec) into the
 # image so a cold boot never downloads anything and can run fully offline.
