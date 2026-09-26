@@ -388,16 +388,18 @@ try {
     await receiver.locator(".visual-card h2").waitFor();
     assert.equal(await receiver.locator(".visual-card h2").textContent(), "Ada Lovelace");
     assert.equal(await receiver.locator(".setup-doors").count(), 1);
-    // Current behavior (finding #2 in docs): the receiver speed door is a
-    // reserved teaser; the wizard is the working fallback.
+    // The receiver speed door is live (blueprint primary-door decision) —
+    // the same real flow as the sender side.
     const speedDoor = receiver.getByRole("button", {
-      name: /Speed setup — opening soon/i,
+      name: /Start with your AI/i,
     });
     assert.equal(await speedDoor.count(), 1);
-    assert.equal(await speedDoor.isDisabled(), true);
+    assert.equal(await speedDoor.isEnabled(), true);
     await receiver.screenshot({ path: "artifacts/dogfood-04-receiver-doors.png" });
 
-    await receiver.getByRole("button", { name: "Open the wizard" }).click();
+    await receiver
+      .getByRole("button", { name: "Use the five-step form" })
+      .click();
     await receiver.locator(".setup-panel").waitFor();
     results.wizardKeepsSenderCard =
       (await receiver.locator(".visual-card h2").count()) > 0;
@@ -603,7 +605,9 @@ try {
     });
     await ribbonReceiver.goto(ribbonShareUrl, { waitUntil: "domcontentloaded" });
     await ribbonReceiver.locator(".setup-doors").waitFor();
-    await ribbonReceiver.getByRole("button", { name: "Open the wizard" }).click();
+    await ribbonReceiver
+      .getByRole("button", { name: "Use the five-step form" })
+      .click();
     await ribbonReceiver.locator(".setup-panel").waitFor();
     await ribbonReceiver.getByLabel("Name").fill("Caleb Moss");
     await ribbonReceiver

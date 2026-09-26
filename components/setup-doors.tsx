@@ -50,6 +50,7 @@ export function SetupDoors({
   onCommitProfile,
   onFinishWizard,
   saveState,
+  finishLabel,
 }: {
   profile: FullProfile;
   onProfileChange: <K extends keyof FullProfile>(
@@ -59,6 +60,8 @@ export function SetupDoors({
   onCommitProfile: (next: FullProfile) => void;
   onFinishWizard: () => void;
   saveState: string;
+  /** Receiver flows finish into a match read instead of a share card. */
+  finishLabel?: string;
 }) {
   const [view, setView] = useState<DoorView>("doors");
   const [staged, setStaged] = useState<FullProfile | null>(null);
@@ -167,6 +170,7 @@ export function SetupDoors({
         advisories={wizardAdvisories}
         onFinish={onFinishWizard}
         saveState={saveState}
+        finishLabel={finishLabel}
         onBack={cancelToDoors}
       />
     );

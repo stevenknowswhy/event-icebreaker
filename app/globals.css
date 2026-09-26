@@ -2124,45 +2124,6 @@ summary {
   grid-template-columns: 1.1fr 0.9fr;
 }
 
-.setup-door {
-  background: var(--paper-strong);
-  border: 1px solid var(--line);
-  border-radius: 22px;
-  padding: 26px;
-}
-
-.setup-door--speed {
-  background:
-    radial-gradient(
-      circle at 88% 8%,
-      rgba(107, 97, 255, 0.16),
-      transparent 34%
-    ),
-    var(--paper-strong);
-}
-
-.setup-door .step-label {
-  color: var(--violet);
-}
-
-.setup-door h3 {
-  font-size: 22px;
-  letter-spacing: -0.03em;
-  margin: 12px 0 10px;
-}
-
-.setup-door > p:not(.step-label):not(.microcopy) {
-  color: #4d4f49;
-  font-size: 14px;
-  line-height: 1.6;
-  margin: 0 0 18px;
-  max-width: 420px;
-}
-
-.setup-door .microcopy {
-  margin: 14px 0 0;
-}
-
 /* The receiver's wizard rides in the match section, below the doors. */
 .match-section .setup-panel {
   margin-top: 18px;
@@ -2195,8 +2156,8 @@ summary {
     margin: 6px 0 0;
   }
 }
-/* Sender-side door cards. The .setup-doors grid above is shared with the
-   receiver's doors; the sender skins its cards dark via .door-card. */
+/* Door cards. Both modes render the shared SetupDoors component — the
+   receiver's sit in the match section, above the same dark setup panel. */
 
 .door-card {
   background: #15171a;
