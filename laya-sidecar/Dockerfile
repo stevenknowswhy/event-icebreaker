@@ -21,7 +21,9 @@ RUN pip install --index-url https://download.pytorch.org/whl/cpu --extra-index-u
 # Bake the English checkpoint (the launch default per the approved spec) into the
 # image so a cold boot never downloads anything and can run fully offline.
 # ~800 MB — the resulting image is roughly 2.5–3 GB.
-RUN python -c "from huggingface_hub import snapshot_download; snapshot_download('convaiinnovations/laya')"
+# HF_HUB_OFFLINE=0 here overrides the runtime ENV for this one build step: the
+# bake needs the network, the runtime (every later step) must not.
+RUN HF_HUB_OFFLINE=0 python -c "from huggingface_hub import snapshot_download; snapshot_download('convaiinnovations/laya')"
 
 COPY app/ app/
 COPY contract/ contract/
