@@ -249,7 +249,9 @@ try {
   await receiverPage.route("**/v1/profile-guardrails", guardrailsMock);
   await receiverPage.goto(receiveUrl, { waitUntil: "domcontentloaded" });
   await receiverPage.locator(".visual-card h2").waitFor();
-  await receiverPage.getByRole("button", { name: "Open the wizard" }).click();
+  await receiverPage
+    .getByRole("button", { name: "Use the five-step form" })
+    .click();
   await receiverPage.locator(".setup-panel").waitFor();
   await receiverPage.getByLabel("Name").fill("Maya Chen");
   await receiverPage.getByRole("button", { name: "Next question" }).click();

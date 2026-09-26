@@ -5,6 +5,8 @@
  * dossier state in a phone-sized browser:
  *
  *   1. no-profile receiver  → setup doors + consent-gated wizard → local estimate
+ *   1b. receiver speed door → parse-fail floor escapes to the wizard; happy
+ *       path: paste → pre-filled review → consent → saved profile → local estimate
  *   2. sidecar dossier      → full confident read; ladder ribbon: rung 1
  *      visible, rung 2 behind keep-going, rung 3 behind the deeper tap,
  *      skip at every level, pause + fresh-consent resume
@@ -267,15 +269,18 @@ try {
     "Stefano",
   );
   assert.equal(await doorsPage.locator(".setup-doors").count(), 1);
-  assert.equal(
-    await doorsPage.locator("[data-speed-setup-slot=reserved]").count(),
-    1,
-  );
+  // The receiver speed door is live — the blueprint's primary door, not the
+  // PR #2 reserved teaser.
+  const receiverSpeedDoor = doorsPage.getByRole("button", {
+    name: /Start with your AI/i,
+  });
+  assert.equal(await receiverSpeedDoor.count(), 1);
+  assert.equal(await receiverSpeedDoor.isEnabled(), true);
   assert.equal(
     await doorsPage
-      .getByRole("button", { name: /Speed setup — opening soon/i })
-      .isDisabled(),
-    true,
+      .getByRole("button", { name: "Use the five-step form" })
+      .count(),
+    1,
   );
   await doorsPage.screenshot({
     path: "artifacts/dossier-doors.png",
@@ -283,7 +288,9 @@ try {
   });
 
   // The wizard works now — and nothing is stored before consent.
-  await doorsPage.getByRole("button", { name: "Open the wizard" }).click();
+  await doorsPage
+    .getByRole("button", { name: "Use the five-step form" })
+    .click();
   await doorsPage.locator(".setup-panel").waitFor();
   assert.equal(
     await doorsPage.evaluate(() =>
@@ -310,6 +317,128 @@ try {
   assert.match(await consentCard.textContent(), /Local estimate/i);
   await doorsContext.close();
   results.consentFlow = "passed";
+
+  // ---------- 1b. Receiver speed door: parse-fail floor + happy path ----------
+  const speedContext = await browser.newContext({ viewport });
+  await speedContext.grantPermissions(["clipboard-read", "clipboard-write"], {
+    origin,
+  });
+  const speedPage = await speedContext.newPage();
+  watchPage(speedPage);
+  await speedPage.goto(receiveUrl, { waitUntil: "domcontentloaded" });
+  await speedPage.locator(".visual-card h2").waitFor();
+
+  // Parse-fail floor: a paste that reads as nothing shows the error card and
+  // escapes to the wizard — nothing written either way.
+  await speedPage.getByRole("button", { name: /Start with your AI/i }).click();
+  await speedPage.locator(".speed-paste textarea").waitFor();
+  await speedPage
+    .locator(".speed-paste textarea")
+    .fill("My AI just said: good luck at the hackathon!");
+  await speedPage
+    .getByRole("button", { name: "Read my profile block" })
+    .click();
+  await speedPage.locator(".setup-advisories--error").waitFor();
+  assert.match(
+    (await speedPage.locator(".setup-advisories--error").textContent()) ?? "",
+    /didn’t read as a profile/,
+  );
+  await speedPage
+    .getByRole("button", { name: "Use the five-step form instead" })
+    .click();
+  await speedPage.locator(".setup-question h3").waitFor();
+  assert.equal(
+    await speedPage.locator(".setup-question h3").textContent(),
+    "Who are you?",
+  );
+  assert.equal(
+    await speedPage.evaluate(() =>
+      localStorage.getItem("event-icebreaker.profile.v1"),
+    ),
+    null,
+  );
+  // Back to the doors preserves the sender card above.
+  await speedPage
+    .getByRole("button", { name: "Back to setup options" })
+    .click();
+  await speedPage.getByRole("button", { name: /Start with your AI/i }).waitFor();
+  assert.equal(await speedPage.locator(".visual-card h2").count(), 1);
+  results.receiverParseFailFloor = "passed";
+
+  // Happy path: paste → pre-filled review → consent → save. The review is
+  // the consent moment — nothing is stored until "Confirm and save".
+  await speedPage.getByRole("button", { name: /Start with your AI/i }).click();
+  await speedPage.locator(".speed-paste textarea").waitFor();
+  await speedPage.locator(".speed-paste textarea").fill(
+    [
+      "NAME: Ravi Mehta",
+      "ROLE: Climate-tech field engineer",
+      "SPARK: Retrofitting cold chains for small farms",
+      "CAN_HELP: Cold-chain telemetry on a budget",
+      "LOOKING_FOR: Hardware cofounders who love unglamorous logistics",
+      "INTERESTS: Cold chains, Solar freezers, Farmers markets",
+      "FUN_FACT: Repaired a milk truck with zip ties.",
+    ].join("\n"),
+  );
+  await speedPage
+    .getByRole("button", { name: "Read my profile block" })
+    .click();
+  // A clean paste renders the pre-filled review with no advisory aside.
+  await speedPage
+    .getByRole("heading", { name: "Make it yours, then confirm." })
+    .waitFor();
+  assert.equal(
+    await speedPage.locator(".setup-panel h2").first().textContent(),
+    "Make it yours, then confirm.",
+  );
+  assert.equal(
+    await speedPage.locator(".setup-fields input").first().inputValue(),
+    "Ravi Mehta",
+  );
+  assert.match(
+    (await speedPage.locator(".save-status").first().textContent()) ?? "",
+    /nothing saved yet/i,
+  );
+  assert.equal(
+    await speedPage.evaluate(() =>
+      localStorage.getItem("event-icebreaker.profile.v1"),
+    ),
+    null,
+  );
+  async function receiverConfirmVisible() {
+    try {
+      await speedPage
+        .getByRole("button", { name: "Confirm and save my profile" })
+        .waitFor({ timeout: 1_500 });
+      return true;
+    } catch {
+      return false;
+    }
+  }
+  for (let step = 0; step < 7; step += 1) {
+    if (await receiverConfirmVisible()) break;
+    await speedPage.getByRole("button", { name: "Next question" }).click();
+  }
+  await speedPage
+    .getByRole("button", { name: "Confirm and save my profile" })
+    .click();
+  const receiverSpeedCard = speedPage.locator(".match-read-card");
+  await receiverSpeedCard.waitFor();
+  // The sidecar is unreachable here — the confirmed profile still lands as
+  // the local estimate, exactly like a wizard-finished receiver.
+  await receiverSpeedCard.getByText(/Local estimate/i).first().waitFor();
+  const speedStored = await speedPage.evaluate(() =>
+    localStorage.getItem("event-icebreaker.profile.v1"),
+  );
+  assert.ok(speedStored, "confirming the review stores the profile");
+  assert.match(JSON.parse(speedStored).name, /Ravi/);
+  assert.match(await receiverSpeedCard.textContent(), /Local estimate/i);
+  await speedPage.screenshot({
+    path: "artifacts/dossier-receiver-speed.png",
+    fullPage: true,
+  });
+  await speedContext.close();
+  results.receiverSpeedDoor = "passed";
 
   // ---------- 2–5. Seeded receiver across the four dossier states ----------
   const seeded = await browser.newContext({ viewport });

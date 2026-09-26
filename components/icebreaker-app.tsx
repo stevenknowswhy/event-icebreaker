@@ -28,9 +28,7 @@ import { CopyButton, copyText } from "./copy-button";
 import { DemoMode } from "./demo-mode";
 import { MatchReadCard } from "./match-read-card";
 import { MatchAttestationAction } from "./match-attestation";
-import { ProfileSetup } from "./profile-setup";
 import { SetupDoors } from "./setup-doors";
-import { useGuardrailAdvisories } from "./use-guardrail-advisories";
 
 const PROFILE_STORAGE_KEY = "event-icebreaker.profile.v1";
 const SETTINGS_STORAGE_KEY = "event-icebreaker.settings.v1";
@@ -471,43 +469,6 @@ function SenderMode() {
   );
 }
 
-function ReceiverSetupDoors({ onOpenWizard }: { onOpenWizard: () => void }) {
-  return (
-    <div className="setup-doors">
-      <div
-        className="setup-door setup-door--speed"
-        data-speed-setup-slot="reserved"
-      >
-        <p className="step-label">FASTEST · RECOMMENDED</p>
-        <h3>Let your AI introduce you.</h3>
-        <p>
-          Ask the AI you already use to draft your profile, paste it back,
-          review, and you are done in about a minute.
-        </p>
-        <button className="button button--primary" type="button" disabled>
-          Speed setup — opening soon
-        </button>
-        <p className="microcopy">The five-question wizard works right now.</p>
-      </div>
-      <div className="setup-door">
-        <p className="step-label">FIVE QUESTIONS · ABOUT 2 MIN</p>
-        <h3>Build it yourself.</h3>
-        <p>
-          Five short questions. Everything stays on this device until you
-          choose to share it.
-        </p>
-        <button
-          className="button button--secondary"
-          type="button"
-          onClick={onOpenWizard}
-        >
-          Open the wizard
-        </button>
-      </div>
-    </div>
-  );
-}
-
 function ReceiverMode() {
   const [profile, setProfile] = useState<SharedProfile | null>(null);
   const [error, setError] = useState("");
@@ -519,16 +480,12 @@ function ReceiverMode() {
   const [receiverSettings, setReceiverSettings] = useState<ShareSettings>(
     RECEIVER_DEFAULT_SETTINGS,
   );
-  const [wizardOpen, setWizardOpen] = useState(false);
   const [draftProfile, setDraftProfile] = useState<FullProfile>(
     EMPTY_RECEIVER_PROFILE,
   );
   // `match === null` renders as the loading card; the effect only sets state
   // when a request resolves, so re-decodes refresh in place.
   const [match, setMatch] = useState<MatchDossierResult | null>(null);
-  // Save-time guardrails track the draft while the wizard is open —
-  // advisory banners on flagged fields, never a save blocker.
-  const wizardAdvisories = useGuardrailAdvisories(draftProfile, wizardOpen);
 
   useEffect(() => {
     const timer = window.setTimeout(() => {
@@ -593,13 +550,20 @@ function ReceiverMode() {
     setDraftProfile((current) => ({ ...current, [key]: value }));
   }
 
-  // The consent moment: nothing is stored — and no dossier is requested —
-  // until the receiver reviews their draft and finishes the wizard.
+  // The wizard door's consent moment: nothing is stored — and no dossier is
+  // requested — until the receiver reviews their draft and finishes.
   function finishReceiverWizard() {
     if (!draftProfile.name.trim()) return;
     localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(draftProfile));
     setReceiverProfile(draftProfile);
-    setWizardOpen(false);
+  }
+
+  // The speed door's consent moment, same contract: the reviewed draft
+  // becomes the receiver's profile — and triggers the dossier — only here.
+  function commitReceiverProfile(next: FullProfile) {
+    setDraftProfile(next);
+    localStorage.setItem(PROFILE_STORAGE_KEY, JSON.stringify(next));
+    setReceiverProfile(next);
   }
 
   function decodeManual() {
@@ -717,19 +681,14 @@ function ReceiverMode() {
               <MatchReadCard status="loading" />
             )
           ) : (
-            <>
-              <ReceiverSetupDoors onOpenWizard={() => setWizardOpen(true)} />
-              {wizardOpen && (
-                <ProfileSetup
-                  profile={draftProfile}
-                  onChange={updateDraftProfile}
-                  advisories={wizardAdvisories}
-                  onFinish={finishReceiverWizard}
-                  saveState="Draft — saved when you finish"
-                  finishLabel="Show my match read"
-                />
-              )}
-            </>
+            <SetupDoors
+              profile={draftProfile}
+              onProfileChange={updateDraftProfile}
+              onCommitProfile={commitReceiverProfile}
+              onFinishWizard={finishReceiverWizard}
+              saveState="Draft — saved when you finish"
+              finishLabel="Show my match read"
+            />
           )}
         </div>
       </section>
