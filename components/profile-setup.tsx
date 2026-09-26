@@ -25,6 +25,7 @@ export function ProfileSetup({
   onFinish,
   saveState,
   finishLabel = "Refresh my share card",
+  onBack,
 }: {
   profile: FullProfile;
   onChange: <K extends keyof FullProfile>(
@@ -35,6 +36,7 @@ export function ProfileSetup({
   saveState: string;
   /** Receiver flows finish into a match read instead of a share card. */
   finishLabel?: string;
+  onBack?: () => void;
 }) {
   const [step, setStep] = useState(0);
   const heading = useRef<HTMLHeadingElement>(null);
@@ -234,6 +236,15 @@ export function ProfileSetup({
             {finishLabel}
           </button>
         )}
+        {onBack ? (
+          <button
+            className="button button--quiet"
+            type="button"
+            onClick={onBack}
+          >
+            Back to setup options
+          </button>
+        ) : null}
       </div>
 
       <details className="personality-details">

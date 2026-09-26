@@ -73,7 +73,9 @@ export const SAMPLE_PROFILE: FullProfile = {
   personality: [0.8, 0.8, 0.55, 0.72, 0.3],
 };
 
-const TEXT_LIMITS = {
+// Exported for lib/speed-setup.ts: the speed-setup parser validates pasted
+// drafts against the exact same caps validateSharedProfile enforces.
+export const TEXT_LIMITS = {
   name: 80,
   role: 120,
   interest: 50,

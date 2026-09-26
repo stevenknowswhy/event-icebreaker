@@ -2063,3 +2063,135 @@ summary {
     margin: 6px 0 0;
   }
 }
+/* Sender-side door cards. The .setup-doors grid above is shared with the
+   receiver's doors; the sender skins its cards dark via .door-card. */
+
+.door-card {
+  background: #15171a;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  border-radius: 22px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-height: 240px;
+  padding: 28px;
+}
+
+.door-card--primary {
+  background:
+    radial-gradient(circle at 90% 10%, rgba(107, 97, 255, 0.24), transparent 30%),
+    #15171a;
+}
+
+.door-card .step-label {
+  color: var(--electric);
+}
+
+.door-card h3 {
+  font-size: clamp(22px, 2.4vw, 30px);
+  letter-spacing: -0.04em;
+  margin: 0;
+}
+
+.door-card p:not(.step-label) {
+  color: rgba(255, 255, 255, 0.56);
+  flex-grow: 1;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0;
+}
+
+.door-card .button {
+  align-self: flex-start;
+}
+
+/* Speed-setup flow: steps, paste, parse-fail floor */
+
+.speed-steps {
+  color: rgba(255, 255, 255, 0.64);
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 0 0 22px;
+  padding-left: 20px;
+}
+
+.speed-steps li {
+  margin-bottom: 8px;
+}
+
+.speed-steps li::marker {
+  color: var(--electric);
+  font-weight: 700;
+}
+
+.speed-paste {
+  margin: 22px 0 0;
+  max-width: 760px;
+}
+
+.speed-paste textarea {
+  background: #07080a;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  border-radius: 12px;
+  color: #fff;
+  font-family: var(--font-geist-mono), monospace;
+  font-size: 13px;
+  line-height: 1.6;
+  padding: 12px 14px;
+  resize: vertical;
+  width: 100%;
+}
+
+.speed-paste textarea:focus {
+  border-color: var(--electric);
+  outline: none;
+}
+
+.speed-paste small {
+  color: rgba(255, 255, 255, 0.48);
+  font-size: 12px;
+  line-height: 1.5;
+}
+
+.setup-advisories {
+  background: rgba(107, 97, 255, 0.14);
+  border: 1px solid rgba(107, 97, 255, 0.45);
+  border-radius: 16px;
+  margin: 0 0 24px;
+  padding: 18px 22px;
+}
+
+.setup-advisories h3 {
+  font-size: 16px;
+  letter-spacing: -0.02em;
+  margin: 0 0 10px;
+}
+
+.setup-advisories ul {
+  color: rgba(255, 255, 255, 0.78);
+  font-size: 13px;
+  line-height: 1.6;
+  margin: 0;
+  padding-left: 20px;
+}
+
+.setup-advisories li {
+  margin-bottom: 6px;
+}
+
+.setup-advisories li strong {
+  color: var(--electric-soft);
+}
+
+.setup-advisories--error {
+  background: rgba(255, 99, 99, 0.12);
+  border-color: rgba(255, 99, 99, 0.5);
+  margin-top: 18px;
+}
+
+.speed-review__footer {
+  display: flex;
+  justify-content: flex-end;
+  margin-top: 18px;
+}
+
