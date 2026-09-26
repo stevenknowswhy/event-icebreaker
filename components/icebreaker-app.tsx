@@ -27,6 +27,7 @@ import { requestMatchDossierResult, type MatchDossierResult } from "../lib/match
 import { CopyButton, copyText } from "./copy-button";
 import { DemoMode } from "./demo-mode";
 import { MatchReadCard } from "./match-read-card";
+import { MatchAttestationAction } from "./match-attestation";
 import { ProfileSetup } from "./profile-setup";
 import { SetupDoors } from "./setup-doors";
 import { useGuardrailAdvisories } from "./use-guardrail-advisories";
@@ -561,23 +562,29 @@ function ReceiverMode() {
     return () => window.clearTimeout(timer);
   }, []);
 
+  // Memoized so the dossier effect and the attestation action share one
+  // stable shared-profile identity per (profile, settings) pair.
+  const receiverShared = useMemo(
+    () =>
+      receiverProfile
+        ? createSharedProfile(receiverProfile, receiverSettings)
+        : null,
+    [receiverProfile, receiverSettings],
+  );
+
   // The dossier request resolves for every sidecar state — unset URL,
   // timeout, rejection, or a malformed response all degrade to the local
   // estimate (lib/match.ts degradation contract), so this never throws.
   useEffect(() => {
-    if (!profile || !receiverProfile) return;
+    if (!profile || !receiverShared) return;
     let cancelled = false;
-    const receiverShared = createSharedProfile(
-      receiverProfile,
-      receiverSettings,
-    );
     requestMatchDossierResult(profile, receiverShared).then((result) => {
       if (!cancelled) setMatch(result);
     });
     return () => {
       cancelled = true;
     };
-  }, [profile, receiverProfile, receiverSettings]);
+  }, [profile, receiverShared]);
 
   function updateDraftProfile<K extends keyof FullProfile>(
     key: K,
@@ -691,12 +698,21 @@ function ReceiverMode() {
 
           {receiverProfile ? (
             match ? (
-              <MatchReadCard
-                status="ready"
-                dossier={match.dossier}
-                source={match.source}
-                aiPrompt={prompt}
-              />
+              <>
+                <MatchReadCard
+                  status="ready"
+                  dossier={match.dossier}
+                  source={match.source}
+                  aiPrompt={prompt}
+                />
+                {profile && receiverShared && (
+                  <MatchAttestationAction
+                    sender={profile}
+                    receiver={receiverShared}
+                    band={match.dossier.score.band}
+                  />
+                )}
+              </>
             ) : (
               <MatchReadCard status="loading" />
             )

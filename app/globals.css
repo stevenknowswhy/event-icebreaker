@@ -2069,6 +2069,53 @@ summary {
   text-transform: uppercase;
 }
 
+/* Optional Monad attestation — rendered only when the flag is on. */
+.match-attestation {
+  background: var(--paper-strong);
+  border: 1px dashed rgba(12, 13, 15, 0.28);
+  border-radius: 22px;
+  margin-top: 18px;
+  padding: 20px 26px 22px;
+}
+
+.match-attestation .step-label {
+  color: var(--violet);
+}
+
+.match-attestation__confirm p {
+  color: #4d4f49;
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 12px 0 16px;
+  max-width: 560px;
+}
+
+.match-attestation__confirm .button-row {
+  gap: 10px;
+}
+
+.match-attestation__status {
+  font-size: 14px;
+  line-height: 1.6;
+  margin: 12px 0 0;
+}
+
+.match-attestation__status--error {
+  color: var(--muted);
+}
+
+.match-attestation__status .button {
+  margin-left: 12px;
+}
+
+.match-attestation__microcopy {
+  color: var(--muted);
+  display: block;
+  font-size: 12px;
+  margin-top: 6px;
+}
+
+
 /* Setup doors — the receiver without a profile picks how to build theirs. */
 
 .setup-doors {
